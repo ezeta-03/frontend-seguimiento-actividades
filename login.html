@@ -110,14 +110,19 @@
           loadingText.textContent = "✓ Redirigiendo...";
           log("Redirigiendo...");
 
+          // ✅ Redirige a la URL del dashboard (evita document.write)
           setTimeout(function () {
             google.script.run
-              .withSuccessHandler(function (html) {
-                document.open();
-                document.write(html);
-                document.close();
+              .withSuccessHandler(function (url) {
+                window.top.location.href = url + '?page=dashboard';
               })
-              .getDashboardHtml();
+              .withFailureHandler(function (error) {
+                log("❌ Error obteniendo URL: " + JSON.stringify(error));
+                mostrarError("Error al redirigir: " + (error.message || error.toString()));
+                btnLogin.disabled = false;
+                loadingDiv.style.display = "none";
+              })
+              .getAppUrl();
           }, 800);
         })
         .withFailureHandler(function (error) {

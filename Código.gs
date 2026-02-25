@@ -53,18 +53,42 @@ const CONFIG = {
  * Sirve la interfaz web - VERSIÓN ULTRA SIMPLE
  */
 function doGet(e) {
-  const page = e.parameter.page || 'login';
+  const page  = (e && e.parameter && e.parameter.page) || 'login';
   const email = Session.getActiveUser().getEmail();
 
   if (!email) {
-    return HtmlService.createTemplateFromFile('login').evaluate();
+    return HtmlService.createTemplateFromFile('Login')
+      .evaluate()
+      .setTitle('Sistema de Actividades - Login')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   if (page === 'dashboard') {
-    return HtmlService.createTemplateFromFile('dashboard').evaluate();
+    return HtmlService.createTemplateFromFile('Dashboard')
+      .evaluate()
+      .setTitle('Dashboard - Sistema de Actividades')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  return HtmlService.createTemplateFromFile('login').evaluate();
+  return HtmlService.createTemplateFromFile('Login')
+    .evaluate()
+    .setTitle('Sistema de Actividades - Login')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// ── INCLUDE ───────────────────────────────────────────────
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// ── URL DEL APP ───────────────────────────────────────────
+function getAppUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
+// ── DASHBOARD HTML ────────────────────────────────────────
+function getDashboardHtml() {
+  return HtmlService.createTemplateFromFile('Dashboard').evaluate().getContent();
 }
 
 
