@@ -57,14 +57,14 @@ function doGet(e) {
   const email = Session.getActiveUser().getEmail();
 
   if (!email) {
-    return HtmlService.createHtmlOutputFromFile('login');
+    return HtmlService.createTemplateFromFile('login').evaluate();
   }
 
   if (page === 'dashboard') {
-    return HtmlService.createHtmlOutputFromFile('dashboard');
+    return HtmlService.createTemplateFromFile('dashboard').evaluate();
   }
 
-  return HtmlService.createHtmlOutputFromFile('login');
+  return HtmlService.createTemplateFromFile('login').evaluate();
 }
 
 
@@ -1502,7 +1502,9 @@ function testConexion() {
 
 function getAppUrl() { return ScriptApp.getService().getUrl(); }
 
-function getDashboardHtml() { return HtmlService.createHtmlOutputFromFile('dashboard').getContent(); }
+function getDashboardHtml() { 
+  return HtmlService.createTemplateFromFile('dashboard').evaluate().getContent(); 
+}
 
 function obtenerActividadesDashboard() {
   try {

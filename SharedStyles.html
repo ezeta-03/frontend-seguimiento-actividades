@@ -1,0 +1,142 @@
+<style>
+  /* ══════════════════════════════════════════════════════════
+     SHARED STYLES - Sistema de Actividades
+     Incluir en: Login.html y Dashboard.html
+     mediante: <?!= include('SharedStyles') ?>
+  ══════════════════════════════════════════════════════════ */
+
+  /* RESET */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  /* ── VARIABLES DE TEMA ── */
+  :root[data-theme="light"] {
+    --primary: #ff4c00;
+    --secondary: #ff6b2b;
+    --background: #ffffff;
+    --surface: #ffffff;
+    --surface-alt: #f5f5f5;
+    --text: #000000;
+    --text-secondary: #666666;
+    --border: #e0e0e0;
+    --shadow: rgba(255, 76, 0, 0.1);
+    --shadow-strong: rgba(0, 0, 0, 0.1);
+
+    /* Estados y métricas */
+    --stat-1: #4d74b8;
+    --stat-2: #09b2a1;
+    --stat-3: #4e75b6;
+    --stat-4: #f29638;
+    --stat-5: #de5f7d;
+
+    /* Progreso */
+    --progress-danger: #f1624d;
+    --progress-warning: #f1624d;
+    --progress-success: #04aa6d;
+    --progress-complete: #09b2a1;
+  }
+
+  :root[data-theme="dark"],
+  :root:not([data-theme]) {
+    --primary: #ff4c00;
+    --secondary: #ff6b2b;
+    --background: #1c2532;
+    --surface: #252e3e;
+    --surface-alt: #2a3442;
+    --text: #ffffff;
+    --text-secondary: #b0b0b0;
+    --border: #3a4556;
+    --shadow: rgba(255, 76, 0, 0.2);
+    --shadow-strong: rgba(0, 0, 0, 0.3);
+
+    /* Estados y métricas */
+    --stat-1: #4d74b8;
+    --stat-2: #09b2a1;
+    --stat-3: #4e75b6;
+    --stat-4: #f29638;
+    --stat-5: #de5f7d;
+
+    /* Progreso */
+    --progress-danger: #f1624d;
+    --progress-warning: #f1624d;
+    --progress-success: #04aa6d;
+    --progress-complete: #09b2a1;
+  }
+
+  /* ── TIPOGRAFÍA BASE ── */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, sans-serif;
+    background: var(--background);
+    color: var(--text);
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  /* ── BOTÓN BASE ── */
+  .btn {
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn:hover {
+    background: var(--secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--shadow);
+  }
+
+  .btn:active {
+    transform: translateY(0);
+  }
+
+  .btn:disabled {
+    background: var(--border);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ── SPINNER ── */
+  .spinner {
+    border: 3px solid var(--border);
+    border-top: 3px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* ── TOGGLE DE TEMA (base compartida) ── */
+  .theme-toggle {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+    transition: all 0.3s ease;
+    z-index: 1000;
+  }
+
+  .theme-toggle:hover {
+    transform: scale(1.1);
+  }
+</style>
