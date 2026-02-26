@@ -62,30 +62,43 @@ const CONFIG = {
 // ══════════════════════════════════════════════════════════
 
 function doGet(e) {
-  try {
-    const email = Session.getActiveUser().getEmail();
+  return HtmlService.createTemplateFromFile('Dashboard')
+    .evaluate()
+    .setTitle('Sistema de Actividades')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
 
-    if (email) {
-      // Usuario autenticado en Google → verificar que existe en el sistema
-      const usuario = obtenerUsuarioPorEmail(email);
-
-      if (usuario && usuario.estado === 'Activo') {
-        // Sesión válida → servir Dashboard directamente
-        return HtmlService.createTemplateFromFile('Dashboard')
-          .evaluate()
-          .setTitle('Dashboard - Sistema de Actividades')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      }
-    }
-  } catch(e) {
-    Logger.log('doGet error: ' + e);
-  }
-
-  // Sin sesión o usuario inactivo → Login
+// Solo se usa para cerrar sesión
+function getLoginHtml() {
   return HtmlService.createTemplateFromFile('Login')
     .evaluate()
-    .setTitle('Sistema de Actividades - Login')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    .getContent();
+}
+
+// Esta función ya la tienes en Code.gs — verifica que exista
+// Si no existe, agrégala:
+function obtenerUsuarioPorEmail(email) {
+  try {
+    const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('Usuarios');
+    if (!sheet) return null;
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2] === email) {
+        return {
+          email:         data[i][2],
+          nombre:        data[i][1],
+          rol:           data[i][3],
+          estado:        data[i][4],
+          fechaRegistro: data[i][5] instanceof Date ? data[i][5].toISOString() : ''
+        };
+      }
+    }
+    return null;
+  } catch(e) {
+    Logger.log('obtenerUsuarioPorEmail error: ' + e);
+    return null;
+  }
 }
 
 function obtenerUsuarioPorEmail(email) {
@@ -130,7 +143,26 @@ function getDashboardHtml() {
     .getContent();
 }
 
+function getLoginHtml() {
+  return HtmlService.createTemplateFromFile('Login')
+    .evaluate()
+    .getContent();
+}
 
+function obtenerSesionActiva() {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email) return null;
+
+    const usuario = obtenerUsuarioPorEmail(email);
+    if (!usuario || usuario.estado !== 'Activo') return null;
+
+    return usuario;
+  } catch(e) {
+    Logger.log('obtenerSesionActiva error: ' + e);
+    return null;
+  }
+}
 
 /**
  * Incluye archivos HTML parciales
@@ -649,9 +681,6 @@ function marcarActividadesVencidas() {
 
 
 
-/**
- * Actualiza una actividad
- */
 function actualizarActividad(id, cambios) {
   try {
     Logger.log('=== ACTUALIZANDO ACTIVIDAD: ' + id + ' ===');
@@ -719,6 +748,7 @@ function actualizarActividad(id, cambios) {
 
     // ── Aplicar cambios celda por celda ──────────────────
     const mapa = {
+      proyectoId:   2,   // B
       titulo:       3,   // C
       descripcion:  4,   // D
       responsable:  5,   // E
@@ -786,6 +816,10 @@ function actualizarActividad(id, cambios) {
   }
 }
 
+/**
+ * Envía email de confirmación al responsable y jefe
+ * cuando una actividad es completada (a tiempo o con atraso).
+ */
 /**
  * Envía email de confirmación al responsable y jefe
  * cuando una actividad es completada (a tiempo o con atraso).

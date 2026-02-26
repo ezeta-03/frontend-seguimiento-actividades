@@ -680,18 +680,10 @@
 
           <div class="form-group">
             <label class="form-label">Proyecto</label>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="text" class="form-control" id="editarProyectoNombreDisplay"
-                readonly style="cursor:default;background:var(--surface);flex:1;" 
-                placeholder="Sin proyecto asignado" />
-              <input type="hidden" id="editarProyectoId" />
-              <button type="button" class="btn" 
-                style="white-space:nowrap;padding:8px 14px;background:var(--primary);color:#fff;font-size:13px;"
-                onclick="abrirMiniModalProyecto()">
-                &#x1F4C2; Cambiar
-              </button>
-            </div>
-            <small style="color:var(--text-secondary);font-size:12px;">Haz clic en "Cambiar" para asignar o mover a otro proyecto</small>
+            <select class="form-control" id="editarProyectoId">
+              <option value="">Sin proyecto asignado</option>
+            </select>
+            <small style="color:var(--text-secondary);font-size:12px;">Puedes asignar o cambiar el proyecto de esta actividad</small>
           </div>
 
           <div class="form-group">
@@ -961,30 +953,6 @@
     </div>
   </div>
 </div>
-
-  <!-- MINI-MODAL CAMBIAR PROYECTO -->
-  <div class="modal" id="modalCambiarProyecto" style="z-index:10001;">
-    <div class="modal-content" style="max-width:420px;">
-      <div class="modal-header">
-        <h2 class="modal-title">Cambiar Proyecto</h2>
-        <button class="btn-close" onclick="cerrarModal('modalCambiarProyecto')">&#xD7;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Selecciona el proyecto</label>
-          <select class="form-control" id="miniModalProyectoSelect" style="font-size:14px;">
-            <option value="">Sin proyecto asignado</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCambiarProyecto')">Cancelar</button>
-        <button type="button" class="btn" style="background:var(--primary);color:#fff;" onclick="confirmarCambioProyecto()">
-          &#x2705; Confirmar
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- LOADING OVERLAY -->
   <div class="loading-overlay" id="loadingOverlay">
@@ -1718,14 +1686,27 @@
           document.getElementById('editarAvance').value      = actividad.avance || 0;
           document.getElementById('editarPrioridad').value   = actividad.prioridad;
 
-          // Llenar lista interna para el mini-modal (no se muestra aún)
+          // Llenar select de proyectos
+          var selectProyecto = document.getElementById('editarProyectoId');
           var listaProyectos = (proyectosGlobal && proyectosGlobal.length > 0)
             ? proyectosGlobal : (window.proyectosGlobal || []);
 
-          // Mostrar proyecto actual en campo display
-          var proyectoActual = listaProyectos.find(function(p) { return p.id === actividad.proyectoId; });
-          document.getElementById('editarProyectoNombreDisplay').value = proyectoActual ? proyectoActual.nombre : '';
-          document.getElementById('editarProyectoId').value = actividad.proyectoId || '';
+          selectProyecto.innerHTML = '<option value="">Sin proyecto asignado</option>';
+          listaProyectos.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.nombre;
+            selectProyecto.appendChild(opt);
+          });
+
+          // Diferir la selección al siguiente tick para garantizar que el DOM esté listo
+          var proyectoIdActividad = actividad.proyectoId ? String(actividad.proyectoId).trim() : '';
+          setTimeout(function() {
+            if (proyectoIdActividad) {
+              selectProyecto.value = proyectoIdActividad;
+              console.log('Proyecto seleccionado:', selectProyecto.value, '| Esperado:', proyectoIdActividad);
+            }
+          }, 0);
 
           if (actividad.fechaInicio) {
             document.getElementById('editarFechaInicio').value = formatearFechaParaInput(new Date(actividad.fechaInicio));
@@ -1739,6 +1720,15 @@
            'editarPrioridad','editarFechaInicio','editarFechaFin'].forEach(function(fieldId) {
             var el = document.getElementById(fieldId);
             if (el) el.disabled = false;
+          });
+
+          document.querySelectorAll('#modalEditarActividad .form-group').forEach(function(g) {
+            g.style.display = '';
+          });
+
+          ['info-colaborador','info-jefatura'].forEach(function(cls) {
+            var el = document.querySelector('#modalEditarActividad .' + cls);
+            if (el) el.remove();
           });
 
           document.getElementById('modalEditarActividad').classList.add('active');
@@ -1767,36 +1757,6 @@
             })
             .obtenerProyectos({});
         }
-      }
-
-      function abrirMiniModalProyecto() {
-        var select = document.getElementById('miniModalProyectoSelect');
-        var idActual = document.getElementById('editarProyectoId').value;
-        var lista = (proyectosGlobal && proyectosGlobal.length > 0) ? proyectosGlobal : (window.proyectosGlobal || []);
-
-        // Llenar opciones en el momento del clic — proyectos ya están cargados
-        select.innerHTML = '<option value="">Sin proyecto asignado</option>';
-        lista.forEach(function(p) {
-          var opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = p.nombre;
-          if (p.id === idActual) opt.selected = true;
-          select.appendChild(opt);
-        });
-
-        document.getElementById('modalCambiarProyecto').classList.add('active');
-      }
-
-      function confirmarCambioProyecto() {
-        var select     = document.getElementById('miniModalProyectoSelect');
-        var nuevoId    = select.value;
-        var nuevoNombre = select.options[select.selectedIndex].text;
-
-        // Actualizar el campo display y el hidden del modal de edición
-        document.getElementById('editarProyectoId').value = nuevoId;
-        document.getElementById('editarProyectoNombreDisplay').value = nuevoId ? nuevoNombre : '';
-
-        cerrarModal('modalCambiarProyecto');
       }
 
       function guardarEdicionActividad() {

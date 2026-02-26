@@ -106,26 +106,26 @@
           }
 
           log("Usuario válido: " + usuario.email + " (" + usuario.rol + ")");
+          usuario._ts = Date.now();
           localStorage.setItem("usuario", JSON.stringify(usuario));
-          loadingText.textContent = "✓ Cargando dashboard...";
+          loadingText.textContent = "&#x2713; Cargando dashboard...";
           log("Cargando dashboard...");
 
-          // ✅ Usa document.write — único mecanismo que funciona en Apps Script
           setTimeout(function () {
             google.script.run
-              .withSuccessHandler(function (html) {
+              .withSuccessHandler(function(html) {
                 document.open();
                 document.write(html);
                 document.close();
               })
-              .withFailureHandler(function (error) {
-                log("❌ Error cargando dashboard: " + JSON.stringify(error));
-                mostrarError("Error al cargar dashboard: " + (error.message || error.toString()));
+              .withFailureHandler(function(error) {
+                log("❌ Error: " + JSON.stringify(error));
+                mostrarError("Error al cargar: " + (error.message || error.toString()));
                 btnLogin.disabled = false;
                 loadingDiv.style.display = "none";
               })
               .getDashboardHtml();
-          }, 600);
+          }, 400);
         })
         .withFailureHandler(function (error) {
           log("❌ Error en la llamada");
