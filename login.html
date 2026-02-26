@@ -82,8 +82,8 @@
 
     // ── AUTENTICACIÓN ─────────────────────────────────────────
     function iniciarSesion() {
-      const btnLogin = document.getElementById("btnLogin");
-      const loadingDiv = document.getElementById("loading");
+      const btnLogin    = document.getElementById("btnLogin");
+      const loadingDiv  = document.getElementById("loading");
       const loadingText = document.getElementById("loadingText");
 
       btnLogin.disabled = true;
@@ -107,30 +107,30 @@
 
           log("Usuario válido: " + usuario.email + " (" + usuario.rol + ")");
           localStorage.setItem("usuario", JSON.stringify(usuario));
-          loadingText.textContent = "✓ Redirigiendo...";
-          log("Redirigiendo...");
+          loadingText.textContent = "✓ Cargando dashboard...";
+          log("Cargando dashboard...");
 
-          // ✅ Redirige a la URL del dashboard (evita document.write)
+          // ✅ Usa document.write — único mecanismo que funciona en Apps Script
           setTimeout(function () {
             google.script.run
-              .withSuccessHandler(function (url) {
-                window.top.location.href = url + '?page=dashboard';
+              .withSuccessHandler(function (html) {
+                document.open();
+                document.write(html);
+                document.close();
               })
               .withFailureHandler(function (error) {
-                log("❌ Error obteniendo URL: " + JSON.stringify(error));
-                mostrarError("Error al redirigir: " + (error.message || error.toString()));
+                log("❌ Error cargando dashboard: " + JSON.stringify(error));
+                mostrarError("Error al cargar dashboard: " + (error.message || error.toString()));
                 btnLogin.disabled = false;
                 loadingDiv.style.display = "none";
               })
-              .getAppUrl();
-          }, 800);
+              .getDashboardHtml();
+          }, 600);
         })
         .withFailureHandler(function (error) {
           log("❌ Error en la llamada");
           log("Error: " + JSON.stringify(error));
-          mostrarError(
-            "Error de autenticación:\n\n" + (error.message || error.toString())
-          );
+          mostrarError("Error de autenticación:\n\n" + (error.message || error.toString()));
           btnLogin.disabled = false;
           loadingDiv.style.display = "none";
         })

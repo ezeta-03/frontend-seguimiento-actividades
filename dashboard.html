@@ -163,9 +163,7 @@
 >
   <span>&#x1F6A8;</span> Actividad Emergente
 </button>
-        <button class="btn btn-success" onclick="exportarTodasAlCalendario()">
-            <span>&#x1F4C5;</span> Exportar todas al Calendar
-          </button>
+
       </div>
     </div>
 
@@ -542,25 +540,37 @@
             <small style="color: #6c757d; font-size: 12px;">Puedes vincular esta actividad a un proyecto existente</small>
           </div>
 
-          <div class="form-group" id="responsableGroup">
-            <label class="form-label">Responsable *</label>
-            <select class="form-control" id="responsable" required>
-                <option value="">Seleccionar...</option>
-              </select>
+          <!-- GERENCIA: sin campos de personas, solo ve este aviso -->
+          <div id="gerenciaAutoAsignada" style="display:none;">
+            <div style="background:rgba(255,76,0,0.08);border-left:3px solid var(--primary);padding:10px 14px;border-radius:6px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+              &#x1F4CC; Esta actividad quedar&#xE1; asignada a ti como Gerencia.
+            </div>
           </div>
 
-          <div class="form-group" id="jefeGroup">
-            <label class="form-label">Jefe Supervisor</label>
-            <select class="form-control" id="jefe">
-                <option value="">Seleccionar...</option>
-              </select>
+          <!-- JEFATURA: jefaturas adicionales + colaboradores -->
+          <div id="jefaturaAdicionalGroup" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">Jefaturas adicionales <span style="font-weight:400;opacity:.7;">(opcional)</span></label>
+              <div id="checkJefaturasAdicionales" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);padding:10px;border-radius:8px;">
+                <!-- Se llena dinámicamente -->
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Colaboradores asignados <span style="font-weight:400;opacity:.7;">(opcional)</span></label>
+              <div id="checkColaboradoresJefatura" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);padding:10px;border-radius:8px;">
+                <!-- Se llena dinámicamente -->
+              </div>
+            </div>
           </div>
 
-          <div class="form-group" id="gerenteGroup">
-            <label class="form-label">Gerente</label>
-            <select class="form-control" id="gerente">
-                <option value="">Seleccionar...</option>
-              </select>
+          <!-- COLABORADOR: colaboradores adicionales -->
+          <div id="colaboradorAdicionalGroup" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">Colaboradores adicionales <span style="font-weight:400;opacity:.7;">(opcional)</span></label>
+              <div id="checkColaboradoresAdicionales" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);padding:10px;border-radius:8px;">
+                <!-- Se llena dinámicamente -->
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -1145,66 +1155,9 @@
       }
 
       function llenarSelectUsuarios() {
-        console.log("Llenando selects de usuarios...");
-        console.log("Colaboradores:", usuariosColaboradores.length);
-        console.log("Jefes:", usuariosJefes.length);
-        console.log("Gerentes:", usuariosGerentes.length);
-
-        const selectResponsable = document.getElementById("responsable");
-        const selectJefe = document.getElementById("jefe");
-        const selectGerente = document.getElementById("gerente");
-
-        if (!selectResponsable || !selectJefe || !selectGerente) {
-          console.error("No se encontraron los elementos select");
-          return;
-        }
-
-        // Limpiar
-        selectResponsable.innerHTML =
-          '<option value="">Seleccionar...</option>';
-        selectJefe.innerHTML = '<option value="">Seleccionar...</option>';
-        selectGerente.innerHTML = '<option value="">Seleccionar...</option>';
-
-        // Llenar responsables (Colaboradores)
-        usuariosColaboradores.forEach((user) => {
-          const option = document.createElement("option");
-          option.value = user.email;
-          option.textContent = user.nombre + ' (' + user.email + ')';
-          selectResponsable.appendChild(option);
-        });
-
-        // Llenar jefes
-        usuariosJefes.forEach((user) => {
-          const option = document.createElement("option");
-          option.value = user.email;
-          option.textContent = user.nombre + ' (' + user.email + ')';
-          selectJefe.appendChild(option);
-        });
-
-        // Llenar gerentes
-        usuariosGerentes.forEach((user) => {
-          const option = document.createElement("option");
-          option.value = user.email;
-          option.textContent = user.nombre + ' (' + user.email + ')';
-          selectGerente.appendChild(option);
-        });
-
-        // Ajustar visibilidad según rol del usuario actual
-        if (usuarioActual && usuarioActual.rol === "Colaborador") {
-          document.getElementById("responsableGroup").style.display = "none";
-          document.getElementById("jefeGroup").style.display = "none";
-          document.getElementById("gerenteGroup").style.display = "none";
-        }
-
-        console.log("✅ Selects llenados correctamente");
-        console.log(
-          "Opciones en Responsable:",
-          selectResponsable.options.length,
-        );
-        console.log("Opciones en Jefe:", selectJefe.options.length);
-        console.log("Opciones en Gerente:", selectGerente.options.length);
-
-        // Llenar filtro de responsable en la tabla
+        // Los usuarios ya están cargados en los arrays globales:
+        // usuariosColaboradores, usuariosJefes, usuariosGerentes
+        // Los checkboxes se generan dinámicamente en abrirModalNuevaActividad()
         llenarFiltroResponsable();
       }
 
@@ -1325,7 +1278,7 @@
             + '<td><span class="badge-priority priority-' + prioridadClass + '">' + act.prioridad + '</span></td>'
             + '<td style="white-space:nowrap;">' + fechaInicio + '</td>'
             + '<td style="white-space:nowrap;">' + fechaFin + '</td>'
-            + '<td>' + cronBadge + '<div class="actions-cell"><button class="btn-icon" onclick="verDetalle(\'' + act.id + '\')" title="Ver detalle">👁️</button><button class="btn-icon" onclick="exportarActividadAlCalendario(\'' + act.id + '\')" title="Exportar">📅</button>' + accionBtn + elimBtn + '</div></td>'
+            + '<td>' + cronBadge + '<div class="actions-cell"><button class="btn-icon" onclick="verDetalle(\'' + act.id + '\')" title="Ver detalle">👁️</button>' + accionBtn + elimBtn + '</div></td>'
             + '</tr>';
         }).join("");
 
@@ -1458,65 +1411,74 @@
 
 
       function abrirModalNuevaActividad() {
-        console.log("=== ABRIENDO MODAL NUEVA ACTIVIDAD ===");
-        console.log("Usuario actual:", usuarioActual);
-        console.log("Datos listos:", datosListos);
-        console.log("Colaboradores:", usuariosColaboradores.length);
-        console.log("Jefes:", usuariosJefes.length);
-        console.log("Gerentes:", usuariosGerentes.length);
-
         if (!datosListos) {
           alert("Espera un momento, los datos aún se están cargando...");
           return;
         }
-
         if (!usuarioActual) {
           alert("Error: No hay usuario activo. Por favor recarga la página.");
           return;
         }
 
-        // ═══════════════════════════════════════════════════════════
-        // CONTROL DE CAMPOS SEGÚN ROL
-        // ═══════════════════════════════════════════════════════════
-        const responsableGroup = document.getElementById('responsableGroup');
-        const jefeGroup = document.getElementById('jefeGroup');
-        const gerenteGroup = document.getElementById('gerenteGroup');
-        
-        if (usuarioActual.rol === 'Colaborador') {
-          // COLABORADOR: Se auto-asigna, no elige responsable
-          // Solo puede asignar Jefe y Gerente
-          if (responsableGroup) responsableGroup.style.display = 'none';
-          if (jefeGroup) jefeGroup.style.display = 'block';
-          if (gerenteGroup) gerenteGroup.style.display = 'block';
-        } else {
-          // JEFATURA y GERENCIA: Pueden asignar todos los campos
-          if (responsableGroup) responsableGroup.style.display = 'block';
-          if (jefeGroup) jefeGroup.style.display = 'block';
-          if (gerenteGroup) gerenteGroup.style.display = 'block';
+        // Ocultar todos los grupos de personas primero
+        document.getElementById('gerenciaAutoAsignada').style.display      = 'none';
+        document.getElementById('jefaturaAdicionalGroup').style.display     = 'none';
+        document.getElementById('colaboradorAdicionalGroup').style.display  = 'none';
+
+        // Mostrar según rol
+        if (usuarioActual.rol === 'Gerencia') {
+          document.getElementById('gerenciaAutoAsignada').style.display = 'block';
+
+        } else if (usuarioActual.rol === 'Jefatura') {
+          // Llenar checkboxes de jefaturas adicionales (otras jefaturas, excluyendo al usuario)
+          const contJefaturas = document.getElementById('checkJefaturasAdicionales');
+          contJefaturas.innerHTML = '';
+          const otrasJefaturas = usuariosJefes.filter(function(u) { return u.email !== usuarioActual.email; });
+          if (otrasJefaturas.length === 0) {
+            contJefaturas.innerHTML = '<small style="opacity:.6;">No hay otras jefaturas disponibles.</small>';
+          } else {
+            otrasJefaturas.forEach(function(u) {
+              contJefaturas.innerHTML +=
+                '<label class="checkbox-item"><input type="checkbox" class="check-jefatura-adicional" value="' + u.email + '"> ' + u.nombre + '</label>';
+            });
+          }
+
+          // Llenar checkboxes de colaboradores
+          const contColabJef = document.getElementById('checkColaboradoresJefatura');
+          contColabJef.innerHTML = '';
+          if (usuariosColaboradores.length === 0) {
+            contColabJef.innerHTML = '<small style="opacity:.6;">No hay colaboradores disponibles.</small>';
+          } else {
+            usuariosColaboradores.forEach(function(u) {
+              contColabJef.innerHTML +=
+                '<label class="checkbox-item"><input type="checkbox" class="check-colab-jefatura" value="' + u.email + '"> ' + u.nombre + '</label>';
+            });
+          }
+          document.getElementById('jefaturaAdicionalGroup').style.display = 'block';
+
+        } else if (usuarioActual.rol === 'Colaborador') {
+          // Llenar checkboxes de otros colaboradores (excluyendo al usuario)
+          const contColab = document.getElementById('checkColaboradoresAdicionales');
+          contColab.innerHTML = '';
+          const otrosColabs = usuariosColaboradores.filter(function(u) { return u.email !== usuarioActual.email; });
+          if (otrosColabs.length === 0) {
+            contColab.innerHTML = '<small style="opacity:.6;">No hay otros colaboradores disponibles.</small>';
+          } else {
+            otrosColabs.forEach(function(u) {
+              contColab.innerHTML +=
+                '<label class="checkbox-item"><input type="checkbox" class="check-colab-adicional" value="' + u.email + '"> ' + u.nombre + '</label>';
+            });
+          }
+          document.getElementById('colaboradorAdicionalGroup').style.display = 'block';
         }
 
+        // Fechas por defecto
+        const ahora  = new Date();
+        const manana = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
+        document.getElementById("fechaInicio").value = formatearFechaParaInput(ahora);
+        document.getElementById("fechaFin").value    = formatearFechaParaInput(manana);
+
         document.getElementById("modalNuevaActividad").classList.add("active");
-
-        // Verificar que los selects tienen opciones
-        const selectResponsable = document.getElementById("responsable");
-        const selectJefe = document.getElementById("jefe");
-        const selectGerente = document.getElementById("gerente");
-
-        console.log(
-          "Opciones en Responsable:",
-          selectResponsable.options.length,
-        );
-        console.log("Opciones en Jefe:", selectJefe.options.length);
-        console.log("Opciones en Gerente:", selectGerente.options.length);
-
-        // Establecer fechas por defecto
-        const ahora = new Date();
-        const mañana = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
-
-        document.getElementById("fechaInicio").value =
-          formatearFechaParaInput(ahora);
-        document.getElementById("fechaFin").value =
-          formatearFechaParaInput(mañana);
       }
 
       function formatearFechaParaInput(fecha) {
@@ -1530,61 +1492,70 @@
       }
 
       function crearActividad() {
-        console.log("Creando actividad...");
+        if (!datos_titulo_valido()) return;
 
-        const datos = {
-          titulo: document.getElementById("titulo").value,
-          descripcion: document.getElementById("descripcion").value,
-          proyectoId: document.getElementById("proyectoId").value,  // ← NUEVO CAMPO
-          responsable: document.getElementById("responsable").value,
-          jefe: document.getElementById("jefe").value,
-          gerente: document.getElementById("gerente").value,
-          prioridad: document.getElementById("prioridad").value,
-          fechaInicio: document.getElementById("fechaInicio").value,
-          fechaFin: document.getElementById("fechaFin").value,
-          noEnviarEmail: true,
-        };
+        // Recoger checkboxes según rol
+        var jefaturasAdicionales    = [];
+        var colaboradoresAdicionales = [];
 
-        console.log("Datos de la actividad:", datos);
-
-        // Validación
-        if (!datos.titulo || !datos.fechaInicio || !datos.fechaFin) {
-          alert("Por favor completa los campos obligatorios");
-          return;
+        if (usuarioActual.rol === 'Jefatura') {
+          document.querySelectorAll('.check-jefatura-adicional:checked').forEach(function(cb) {
+            jefaturasAdicionales.push(cb.value);
+          });
+          document.querySelectorAll('.check-colab-jefatura:checked').forEach(function(cb) {
+            colaboradoresAdicionales.push(cb.value);
+          });
+        } else if (usuarioActual.rol === 'Colaborador') {
+          document.querySelectorAll('.check-colab-adicional:checked').forEach(function(cb) {
+            colaboradoresAdicionales.push(cb.value);
+          });
         }
 
-        // Si es colaborador, asignar su email automáticamente
-        if (usuarioActual.rol === "Colaborador") {
-          datos.responsable = usuarioActual.email;
-        } else if (!datos.responsable) {
-          alert("Por favor selecciona un responsable");
+        var datos = {
+          titulo:                  document.getElementById("titulo").value,
+          descripcion:             document.getElementById("descripcion").value,
+          proyectoId:              document.getElementById("proyectoId").value,
+          prioridad:               document.getElementById("prioridad").value,
+          fechaInicio:             document.getElementById("fechaInicio").value,
+          fechaFin:                document.getElementById("fechaFin").value,
+          jefaturasAdicionales:    jefaturasAdicionales,
+          colaboradoresAdicionales: colaboradoresAdicionales
+        };
+
+        if (!datos.titulo || !datos.fechaInicio || !datos.fechaFin) {
+          alert("Por favor completa los campos obligatorios");
           return;
         }
 
         mostrarLoading(true);
 
         google.script.run
-          .withSuccessHandler(function (resultado) {
-            console.log("Resultado:", resultado);
+          .withSuccessHandler(function(resultado) {
             if (!resultado || !resultado.success) {
-              alert(
-                "Error al guardar la actividad: " +
-                  (resultado ? resultado.message : "Respuesta nula"),
-              );
+              alert("Error al guardar la actividad: " + (resultado ? resultado.message : "Respuesta nula"));
               mostrarLoading(false);
               return;
             }
-            alert("✅ Actividad creada exitosamente");
+            mostrarNotificacion("Actividad creada exitosamente", "success");
             cerrarModal("modalNuevaActividad");
             cargarActividades();
             mostrarLoading(false);
           })
-          .withFailureHandler(function (error) {
-            console.error("Error:", error);
+          .withFailureHandler(function(error) {
             alert("Error al crear actividad: " + error.message);
             mostrarLoading(false);
           })
           .crearActividad(datos);
+      }
+
+      function datos_titulo_valido() {
+        var titulo = document.getElementById("titulo");
+        if (!titulo || !titulo.value.trim()) {
+          alert("El título es obligatorio");
+          if (titulo) titulo.focus();
+          return false;
+        }
+        return true;
       }
 
       function verDetalle(id) {
@@ -1958,7 +1929,7 @@
         
         switch(usuarioActual.rol) {
           case 'Gerencia':
-            if (btnNuevaActividad) btnNuevaActividad.style.display = 'none';
+            if (btnNuevaActividad) btnNuevaActividad.style.display = 'inline-flex';
             if (btnActividadEmergente) btnActividadEmergente.style.display = 'inline-flex';
             if (btnProyectos) btnProyectos.style.display = 'inline-flex';
             if (filterProyecto) filterProyecto.style.display = 'block';

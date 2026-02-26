@@ -46,34 +46,62 @@ const CONFIG = {
 // FUNCIONES PRINCIPALES DE LA API
 // ============================================
 
-/**
- * Sirve la interfaz web - VERSIÓN CON LOGGING
- */
-/**
- * Sirve la interfaz web - VERSIÓN ULTRA SIMPLE
- */
+// Lógica:
+// 1. Si el usuario tiene sesión activa en Google → sirve Dashboard
+// 2. Si no → sirve Login
+// 3. Ya no se necesita ?page=dashboard
+// ══════════════════════════════════════════════════════════
+
 function doGet(e) {
-  const page  = (e && e.parameter && e.parameter.page) || 'login';
-  const email = Session.getActiveUser().getEmail();
+  try {
+    const email = Session.getActiveUser().getEmail();
 
-  if (!email) {
-    return HtmlService.createTemplateFromFile('Login')
-      .evaluate()
-      .setTitle('Sistema de Actividades - Login')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    if (email) {
+      // Usuario autenticado en Google → verificar que existe en el sistema
+      const usuario = obtenerUsuarioPorEmail(email);
+
+      if (usuario && usuario.estado === 'Activo') {
+        // Sesión válida → servir Dashboard directamente
+        return HtmlService.createTemplateFromFile('Dashboard')
+          .evaluate()
+          .setTitle('Dashboard - Sistema de Actividades')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      }
+    }
+  } catch(e) {
+    Logger.log('doGet error: ' + e);
   }
 
-  if (page === 'dashboard') {
-    return HtmlService.createTemplateFromFile('Dashboard')
-      .evaluate()
-      .setTitle('Dashboard - Sistema de Actividades')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
+  // Sin sesión o usuario inactivo → Login
   return HtmlService.createTemplateFromFile('Login')
     .evaluate()
     .setTitle('Sistema de Actividades - Login')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function obtenerUsuarioPorEmail(email) {
+  try {
+    const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('Usuarios');
+    if (!sheet) return null;
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2] === email) {  // columna C = email
+        return {
+          email:         data[i][2],
+          nombre:        data[i][1],
+          rol:           data[i][3],
+          estado:        data[i][4],
+          fechaRegistro: data[i][5] instanceof Date ? data[i][5].toISOString() : ''
+        };
+      }
+    }
+    return null;
+  } catch(e) {
+    Logger.log('obtenerUsuarioPorEmail error: ' + e);
+    return null;
+  }
 }
 
 // ── INCLUDE ───────────────────────────────────────────────
@@ -88,9 +116,10 @@ function getAppUrl() {
 
 // ── DASHBOARD HTML ────────────────────────────────────────
 function getDashboardHtml() {
-  return HtmlService.createTemplateFromFile('Dashboard').evaluate().getContent();
+  return HtmlService.createTemplateFromFile('Dashboard')
+    .evaluate()
+    .getContent();
 }
-
 
 
 
@@ -345,197 +374,192 @@ function actualizarRolUsuario(email, nuevoRol) {
 // ============================================
 
 /**
- * Crea una nueva actividad
- * MODIFICADO: Gerencia no puede crear actividades regulares
+ * Reglas por rol:
+ * - Gerencia:    auto-asignada, sin personas adicionales
+ * - Jefatura:    auto-asignada, puede agregar jefaturas Y colaboradores
+ * - Colaborador: auto-asignado, puede agregar otros colaboradores
  */
 function crearActividad(datos) {
   try {
     Logger.log('=== CREANDO ACTIVIDAD ===');
     const usuario = obtenerUsuarioActual();
     Logger.log('Usuario: ' + usuario.email + ' (' + usuario.rol + ')');
-    
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('Actividades');
-    
-    if (!sheet) {
-      Logger.log('ERROR: No se encontró la hoja Actividades');
-      return { success: false, message: "No se encontró la hoja Actividades" };
-    }
 
-    // NUEVO: Validación - Gerencia solo puede crear emergentes
-    if (usuario.rol === CONFIG.ROLES.GERENCIA) {
-      Logger.log('❌ Gerencia intentó crear actividad regular');
-      return { 
-        success: false, 
-        message: "La gerencia solo puede crear actividades emergentes. Usa el botón 'Actividad Emergente'." 
-      };
-    }
+    const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('Actividades');
+    if (!sheet) return { success: false, message: 'No se encontró la hoja Actividades' };
 
     const id = 'ACT-' + new Date().getTime();
-    
-    // MODIFICADO: Auto-asignaciones según rol
-    if (usuario.rol === CONFIG.ROLES.COLABORADOR) {
-      Logger.log('Modo Colaborador: auto-asignación');
-      datos.responsable = usuario.email;
-      datos.jefe = datos.jefe || '';
-      datos.gerente = datos.gerente || '';
-      
+
+    // Normalizar adicionales
+    let jefaturasAdicionales     = Array.isArray(datos.jefaturasAdicionales)
+      ? datos.jefaturasAdicionales.filter(Boolean) : [];
+    let colaboradoresAdicionales = Array.isArray(datos.colaboradoresAdicionales)
+      ? datos.colaboradoresAdicionales.filter(Boolean) : [];
+
+    // Asignación y restricciones según rol
+    if (usuario.rol === CONFIG.ROLES.GERENCIA) {
+      datos.responsable            = usuario.email;
+      datos.jefe                   = '';
+      datos.gerente                = '';
+      jefaturasAdicionales         = [];
+      colaboradoresAdicionales     = [];
+
     } else if (usuario.rol === CONFIG.ROLES.JEFATURA) {
-      Logger.log('Modo Jefatura: asignando a colaborador');
-      datos.jefe = usuario.email;
-      
-      if (!datos.responsable) {
-        Logger.log('ERROR: Jefatura debe seleccionar un responsable');
-        return { success: false, message: "Debes seleccionar un responsable para la actividad" };
-      }
+      datos.responsable = usuario.email;
+      datos.jefe        = usuario.email;
+      datos.gerente     = datos.gerente || '';
+      // jefaturasAdicionales y colaboradoresAdicionales vienen del form
+
+    } else if (usuario.rol === CONFIG.ROLES.COLABORADOR) {
+      datos.responsable        = usuario.email;
+      datos.jefe               = datos.jefe   || '';
+      datos.gerente            = datos.gerente || '';
+      jefaturasAdicionales     = []; // Colaborador no agrega jefaturas
     }
 
-    Logger.log('Responsable: ' + datos.responsable);
-    Logger.log('Jefe: ' + datos.jefe);
+    Logger.log('Responsable: '             + datos.responsable);
+    Logger.log('JefaturasAdicionales: '    + jefaturasAdicionales.join(','));
+    Logger.log('ColaboradoresAdicionales: '+ colaboradoresAdicionales.join(','));
 
-    const actividad = {
-      id,
-      proyectoId: datos.proyectoId || '',
-      titulo: datos.titulo || '',
-      descripcion: datos.descripcion || '',
-      responsable: datos.responsable || '',
-      jefe: datos.jefe || '',
-      gerente: datos.gerente || '',
-      estado: CONFIG.ESTADOS.PENDIENTE,
-      prioridad: datos.prioridad || CONFIG.PRIORIDADES.MEDIA,
-      fechaInicio: datos.fechaInicio ? new Date(datos.fechaInicio) : '',
-      fechaFin: datos.fechaFin ? new Date(datos.fechaFin) : '',
-      fechaCreacion: new Date(),
-      ultimaActualizacion: new Date()
-    };
+    const ahora = new Date();
 
     sheet.appendRow([
-      actividad.id,
-      actividad.proyectoId,
-      actividad.titulo,
-      actividad.descripcion,
-      actividad.responsable,
-      actividad.jefe,
-      actividad.gerente,
-      actividad.estado,
-      actividad.prioridad,
-      actividad.fechaInicio,
-      actividad.fechaFin,
-      actividad.fechaCreacion,
-      actividad.ultimaActualizacion
+      id,                                            // A  ID
+      datos.proyectoId  || '',                       // B  ProyectoID
+      datos.titulo      || '',                       // C  Título
+      datos.descripcion || '',                       // D  Descripción
+      datos.responsable || '',                       // E  Responsable
+      datos.jefe        || '',                       // F  Jefe
+      datos.gerente     || '',                       // G  Gerente
+      CONFIG.ESTADOS.PENDIENTE,                      // H  Estado
+      datos.prioridad   || CONFIG.PRIORIDADES.MEDIA, // I  Prioridad
+      datos.fechaInicio ? new Date(datos.fechaInicio) : '', // J FechaInicio
+      datos.fechaFin    ? new Date(datos.fechaFin)    : '', // K FechaFin
+      ahora,                                         // L  FechaCreacion
+      ahora,                                         // M  UltimaActualizacion
+      0,                                             // N  Avance
+      'Recurrente',                                  // O  Tipo
+      '',                                            // P  FechaAceptacion
+      0,                                             // Q  TiempoEjecucion
+      '',                                            // R  EstadoAnterior
+      '',                                            // S  FechaSuspension
+      jefaturasAdicionales.join(','),                // T  JefaturasAdicionales
+      colaboradoresAdicionales.join(',')             // U  ColaboradoresAdicionales
     ]);
 
-    // Envolver auxiliares en try/catch
-    try { crearEventoCalendario(actividad); } catch(e){ Logger.log("Error calendario: " + e); }
-    try { registrarHistorial(actividad.id, usuario.email, 'Creación', 'Actividad creada'); } catch(e){ Logger.log("Error historial: " + e); }
-    try { enviarNotificacionNuevaActividad(actividad); } catch(e){ Logger.log("Error notificación: " + e); }
+    try { registrarHistorial(id, usuario.email, 'Creación', 'Actividad creada'); } catch(e){ Logger.log('Error historial: ' + e); }
+    try { enviarNotificacionNuevaActividad({ ...datos, id }); }                    catch(e){ Logger.log('Error notif: '     + e); }
 
-    // Serializar fechas: google.script.run no puede enviar objetos Date nativos.
-    const actividadSerializable = {
-      id: actividad.id,
-      proyectoId: actividad.proyectoId,
-      titulo: actividad.titulo,
-      descripcion: actividad.descripcion,
-      responsable: actividad.responsable,
-      jefe: actividad.jefe,
-      gerente: actividad.gerente,
-      estado: actividad.estado,
-      prioridad: actividad.prioridad,
-      fechaInicio: actividad.fechaInicio instanceof Date ? actividad.fechaInicio.toISOString() : (actividad.fechaInicio || ''),
-      fechaFin: actividad.fechaFin instanceof Date ? actividad.fechaFin.toISOString() : (actividad.fechaFin || ''),
-      fechaCreacion: actividad.fechaCreacion instanceof Date ? actividad.fechaCreacion.toISOString() : (actividad.fechaCreacion || ''),
-      ultimaActualizacion: actividad.ultimaActualizacion instanceof Date ? actividad.ultimaActualizacion.toISOString() : (actividad.ultimaActualizacion || '')
+    return {
+      success: true,
+      message: 'Actividad creada correctamente',
+      actividad: {
+        id,
+        proyectoId:               datos.proyectoId  || '',
+        titulo:                   datos.titulo      || '',
+        descripcion:              datos.descripcion || '',
+        responsable:              datos.responsable || '',
+        jefe:                     datos.jefe        || '',
+        gerente:                  datos.gerente     || '',
+        estado:                   CONFIG.ESTADOS.PENDIENTE,
+        prioridad:                datos.prioridad   || CONFIG.PRIORIDADES.MEDIA,
+        fechaInicio:              datos.fechaInicio || '',
+        fechaFin:                 datos.fechaFin    || '',
+        fechaCreacion:            ahora.toISOString(),
+        ultimaActualizacion:      ahora.toISOString(),
+        avance:                   0,
+        jefaturasAdicionales,
+        colaboradoresAdicionales
+      }
     };
 
-    return { success: true, message: "Actividad creada correctamente", actividad: actividadSerializable };
   } catch (error) {
-    Logger.log("Error en crearActividad: " + error);
+    Logger.log('Error en crearActividad: ' + error.toString());
     return { success: false, message: error.toString() };
   }
 }
 
+
 /**
- * Obtiene actividades según el rol del usuario
+ * Visibilidad:
+ * - Gerencia:    ve todas
+ * - Jefatura:    ve las suyas + donde aparece en jefe o JefaturasAdicionales
+ * - Colaborador: ve las suyas + donde aparece en ColaboradoresAdicionales
  */
 function obtenerActividades(filtros = {}) {
   try {
     Logger.log('=== INICIO obtenerActividades ===');
-    
     const usuario = obtenerUsuarioActual();
     Logger.log('Usuario: ' + usuario.email + ' (' + usuario.rol + ')');
-    
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+
+    const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     const sheet = ss.getSheetByName('Actividades');
-    
-    if (!sheet) {
-      Logger.log('Hoja Actividades no existe');
-      return [];
-    }
+    if (!sheet) return [];
 
     const data = sheet.getDataRange().getValues();
-    
-    if (!data || data.length <= 1) {
-      Logger.log('No hay actividades o solo hay encabezados');
-      return [];
-    }
+    if (!data || data.length <= 1) return [];
 
     const actividades = [];
-    
+
     for (let i = 1; i < data.length; i++) {
-      // Saltar filas vacías
       if (!data[i][0]) continue;
-      
+
+      const jefaturasAdicionales     = data[i][19] ? String(data[i][19]).split(',').map(e => e.trim()).filter(Boolean) : [];
+      const colaboradoresAdicionales = data[i][20] ? String(data[i][20]).split(',').map(e => e.trim()).filter(Boolean) : [];
+
       const actividad = {
-        id: data[i][0] || '',
-        proyectoId: data[i][1] || '',
-        titulo: data[i][2] || '',
-        descripcion: data[i][3] || '',
-        responsable: data[i][4] || '',
-        jefe: data[i][5] || '',
-        gerente: data[i][6] || '',
-        estado: data[i][7] || CONFIG.ESTADOS.PENDIENTE,
-        prioridad: data[i][8] || CONFIG.PRIORIDADES.MEDIA,
-        fechaInicio: data[i][9] instanceof Date ? data[i][9].toISOString() : (data[i][9] || ''),
-        fechaFin: data[i][10] instanceof Date ? data[i][10].toISOString() : (data[i][10] || ''),
-        fechaCreacion: data[i][11] instanceof Date ? data[i][11].toISOString() : (data[i][11] || ''),
-        ultimaActualizacion: data[i][12] instanceof Date ? data[i][12].toISOString() : (data[i][12] || ''),
-        avance: data[i][13] || 0,  // ← AGREGAR ESTA LÍNEA (columna 14 = índice 13)
-        tipo: data[i][14] || 'Recurrente',  // ← AGREGAR
-        fechaAceptacion: data[i][15] ? new Date(data[i][15]).toISOString() : null,  // ← AGREGAR
-        tiempoEjecucion: data[i][16] || 0,  // ← AGREGAR
-        estadoAnterior: data[i][17] || '',      // ← AGREGAR (Columna R)
-        fechaSuspension: data[i][18] ? new Date(data[i][18]).toISOString() : null  // ← AGREGAR (Columna S)
+        id:                      data[i][0]  || '',
+        proyectoId:              data[i][1]  || '',
+        titulo:                  data[i][2]  || '',
+        descripcion:             data[i][3]  || '',
+        responsable:             data[i][4]  || '',
+        jefe:                    data[i][5]  || '',
+        gerente:                 data[i][6]  || '',
+        estado:                  data[i][7]  || CONFIG.ESTADOS.PENDIENTE,
+        prioridad:               data[i][8]  || CONFIG.PRIORIDADES.MEDIA,
+        fechaInicio:             data[i][9]  instanceof Date ? data[i][9].toISOString()  : (data[i][9]  || ''),
+        fechaFin:                data[i][10] instanceof Date ? data[i][10].toISOString() : (data[i][10] || ''),
+        fechaCreacion:           data[i][11] instanceof Date ? data[i][11].toISOString() : (data[i][11] || ''),
+        ultimaActualizacion:     data[i][12] instanceof Date ? data[i][12].toISOString() : (data[i][12] || ''),
+        avance:                  data[i][13] || 0,
+        tipo:                    data[i][14] || 'Recurrente',
+        fechaAceptacion:         data[i][15] ? new Date(data[i][15]).toISOString() : null,
+        tiempoEjecucion:         data[i][16] || 0,
+        estadoAnterior:          data[i][17] || '',
+        fechaSuspension:         data[i][18] ? new Date(data[i][18]).toISOString() : null,
+        jefaturasAdicionales,
+        colaboradoresAdicionales
       };
 
       let incluir = false;
-      
+
       switch (usuario.rol) {
         case CONFIG.ROLES.GERENCIA:
           incluir = true;
           break;
+
         case CONFIG.ROLES.JEFATURA:
-          incluir = actividad.jefe === usuario.email || 
-                    actividad.gerente === usuario.email ||
-                    actividad.responsable === usuario.email;
+          incluir = actividad.responsable === usuario.email ||
+                    actividad.jefe        === usuario.email ||
+                    actividad.gerente     === usuario.email ||
+                    jefaturasAdicionales.includes(usuario.email);
           break;
+
         case CONFIG.ROLES.COLABORADOR:
-          incluir = actividad.responsable === usuario.email;
+          incluir = actividad.responsable === usuario.email ||
+                    colaboradoresAdicionales.includes(usuario.email);
           break;
       }
 
-      if (incluir) {
-        actividades.push(actividad);
-      }
+      if (incluir) actividades.push(actividad);
     }
-    
+
     Logger.log('Actividades encontradas: ' + actividades.length);
-    Logger.log('=== FIN obtenerActividades ===');
-    
     return actividades;
-    
+
   } catch (error) {
-    Logger.log('❌ ERROR en obtenerActividades: ' + error.toString());
-    Logger.log('Stack: ' + error.stack);
+    Logger.log('ERROR en obtenerActividades: ' + error.toString());
     return [];
   }
 }
@@ -1527,7 +1551,7 @@ function testConexion() {
 function getAppUrl() { return ScriptApp.getService().getUrl(); }
 
 function getDashboardHtml() { 
-  return HtmlService.createTemplateFromFile('dashboard').evaluate().getContent(); 
+  return HtmlService.createTemplateFromFile('Dashboard').evaluate().getContent(); 
 }
 
 function obtenerActividadesDashboard() {
@@ -1825,75 +1849,72 @@ function crearProyecto(datos) {
 }
 
 /**
- * Obtiene proyectos según el rol del usuario
+ * Visibilidad:
+ * - Gerencia:    ve todos
+ * - Jefatura:    ve los suyos (jefeResponsable o gerenteResponsable) o donde es colaborador
+ * - Colaborador: ve los proyectos donde está asignado
  */
 function obtenerProyectos(filtros = {}) {
   try {
     const usuario = obtenerUsuarioActual();
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('Proyectos');
-    
-    if (!sheet) {
-      Logger.log('La hoja Proyectos no existe');
-      return [];
-    }
-    
-    const data = sheet.getDataRange().getValues();
+    const ss      = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet   = ss.getSheetByName('Proyectos');
+    if (!sheet) return [];
+
+    const data      = sheet.getDataRange().getValues();
     const proyectos = [];
-    
+
     for (let i = 1; i < data.length; i++) {
+      if (!data[i][0]) continue;
+
+      const colaboradores = data[i][5]
+        ? String(data[i][5]).split(',').map(e => e.trim()).filter(Boolean)
+        : [];
+
       const proyecto = {
-        id: data[i][0],
-        nombre: data[i][1],
-        descripcion: data[i][2],
-        gerenteResponsable: data[i][3],
-        jefeResponsable: data[i][4],
-        colaboradores: data[i][5] ? data[i][5].split(',') : [],
-        estado: data[i][6],
-        prioridad: data[i][7],
-        fechaInicio: data[i][8] instanceof Date ? data[i][8].toISOString() : (data[i][8] || ''),
-        fechaFin: data[i][9] instanceof Date ? data[i][9].toISOString() : (data[i][9] || ''),
-        fechaCreacion: data[i][10] instanceof Date ? data[i][10].toISOString() : (data[i][10] || ''),
+        id:                  data[i][0],
+        nombre:              data[i][1],
+        descripcion:         data[i][2],
+        gerenteResponsable:  data[i][3],
+        jefeResponsable:     data[i][4],
+        colaboradores,
+        estado:              data[i][6],
+        prioridad:           data[i][7],
+        fechaInicio:         data[i][8]  instanceof Date ? data[i][8].toISOString()  : (data[i][8]  || ''),
+        fechaFin:            data[i][9]  instanceof Date ? data[i][9].toISOString()  : (data[i][9]  || ''),
+        fechaCreacion:       data[i][10] instanceof Date ? data[i][10].toISOString() : (data[i][10] || ''),
         ultimaActualizacion: data[i][11] instanceof Date ? data[i][11].toISOString() : (data[i][11] || ''),
         presupuestoEstimado: data[i][12],
-        avanceGeneral: data[i][13]
+        avanceGeneral:       data[i][13]
       };
-      
-      // Filtrar según rol
+
       let incluir = false;
-      
+
       switch (usuario.rol) {
         case CONFIG.ROLES.GERENCIA:
-          incluir = true; // Ve todo
+          incluir = true;
           break;
         case CONFIG.ROLES.JEFATURA:
-          incluir = proyecto.jefeResponsable === usuario.email ||
+          incluir = proyecto.jefeResponsable    === usuario.email ||
                     proyecto.gerenteResponsable === usuario.email ||
-                    proyecto.colaboradores.includes(usuario.email);
+                    colaboradores.includes(usuario.email);
           break;
         case CONFIG.ROLES.COLABORADOR:
-          incluir = proyecto.colaboradores.includes(usuario.email);
+          incluir = colaboradores.includes(usuario.email);
           break;
       }
-      
-      // Aplicar filtros adicionales
-      if (incluir && filtros.estado && proyecto.estado !== filtros.estado) {
-        incluir = false;
-      }
-      if (incluir && filtros.prioridad && proyecto.prioridad !== filtros.prioridad) {
-        incluir = false;
-      }
-      
-      if (incluir) {
-        proyectos.push(proyecto);
-      }
+
+      if (incluir && filtros.estado    && proyecto.estado    !== filtros.estado)    incluir = false;
+      if (incluir && filtros.prioridad && proyecto.prioridad !== filtros.prioridad) incluir = false;
+
+      if (incluir) proyectos.push(proyecto);
     }
-    
+
     Logger.log('Proyectos encontrados: ' + proyectos.length);
     return proyectos;
-    
+
   } catch (error) {
-    Logger.log('❌ Error al obtener proyectos: ' + error.toString());
+    Logger.log('ERROR en obtenerProyectos: ' + error.toString());
     return [];
   }
 }
