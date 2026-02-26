@@ -88,6 +88,9 @@
             <option value="En Proceso">En Proceso</option>
             <option value="En Revisi&#xF3;n">En Revisi&#xF3;n</option>
             <option value="Completada">Completada</option>
+            <option value="Vencida">Vencida</option>
+            <option value="Completada con Atraso">Completada con Atraso</option>
+            <option value="Cancelada">Cancelada</option>
           </select>
 
         <select
@@ -677,7 +680,7 @@
 
           <div class="form-group">
             <label class="form-label">Estado *</label>
-            <select class="form-control" id="editarEstado" required>
+            <select class="form-control" id="editarEstado" required onchange="sincronizarEstadoAvance('estado')">
               <option value="Pendiente">Pendiente</option>
               <option value="En Proceso">En Proceso</option>
               <option value="En Revisi&#xF3;n">En Revisi&#xF3;n</option>
@@ -700,6 +703,7 @@
               min="0"
               max="100"
               value="0"
+              onchange="sincronizarEstadoAvance('avance')"
             />
             <small style="color: #6c757d; font-size: 12px;">Indica el progreso de la actividad</small>
           </div>
@@ -1572,7 +1576,7 @@
               mostrarLoading(false);
               return;
             }
-            mostrarNotificacion("Actividad creada exitosamente", "success");
+            mostrarNotificacionTemporal("&#x2705; Actividad creada exitosamente", 3000);
             cerrarModal("modalNuevaActividad");
             cargarActividades();
             mostrarLoading(false);
@@ -1619,180 +1623,116 @@
         modal.classList.add("active");
       }
 
+      // ── Sincronización estado ↔ avance en tiempo real ──
+      function sincronizarEstadoAvance(origen) {
+        var selectEstado = document.getElementById('editarEstado');
+        var inputAvance  = document.getElementById('editarAvance');
+        if (!selectEstado || !inputAvance) return;
+
+        var estado = selectEstado.value;
+        var avance = parseInt(inputAvance.value) || 0;
+
+        if (origen === 'estado') {
+          if (estado === 'Completada' || estado === 'Completada con Atraso') {
+            inputAvance.value = 100;
+          } else if (estado === 'Pendiente') {
+            inputAvance.value = 0;
+          }
+          // En Proceso, En Revisión, Vencida, Cancelada → no tocar el avance
+
+        } else if (origen === 'avance') {
+          if (avance === 100) {
+            // Solo sugerir Completada si el estado actual lo permite
+            var estadoActual = selectEstado.value;
+            if (estadoActual !== 'Completada con Atraso' &&
+                estadoActual !== 'Cancelada' &&
+                estadoActual !== 'Vencida') {
+              selectEstado.value = 'Completada';
+            }
+          } else if (avance === 0 && selectEstado.value === 'Completada') {
+            selectEstado.value = 'Pendiente';
+          } else if (avance > 0 && avance < 100 && selectEstado.value === 'Pendiente') {
+            selectEstado.value = 'En Proceso';
+          }
+        }
+      }
+
       function editarActividad(id) {
-        console.log('Editando actividad:', id);
-        
-        const actividad = actividadesData.find(a => a.id === id);
-        
-        if (!actividad) {
-          alert('Actividad no encontrada');
-          return;
-        }
-        
-        // Llenar el formulario con los datos actuales
-        document.getElementById('editarId').value = actividad.id;
-        document.getElementById('editarTitulo').value = actividad.titulo;
+        var actividad = actividadesData.find(function(a) { return a.id === id; });
+        if (!actividad) { alert('Actividad no encontrada'); return; }
+
+        // Llenar formulario
+        document.getElementById('editarId').value          = actividad.id;
+        document.getElementById('editarTitulo').value      = actividad.titulo;
         document.getElementById('editarDescripcion').value = actividad.descripcion || '';
-        document.getElementById('editarEstado').value = actividad.estado;
-        document.getElementById('editarAvance').value = actividad.avance || 0;
-        document.getElementById('editarPrioridad').value = actividad.prioridad;
-        
-        // Convertir fechas ISO a formato datetime-local
+        document.getElementById('editarEstado').value      = actividad.estado;
+        document.getElementById('editarAvance').value      = actividad.avance || 0;
+        document.getElementById('editarPrioridad').value   = actividad.prioridad;
+
         if (actividad.fechaInicio) {
-          const fechaInicio = new Date(actividad.fechaInicio);
-          document.getElementById('editarFechaInicio').value = formatearFechaParaInput(fechaInicio);
+          document.getElementById('editarFechaInicio').value = formatearFechaParaInput(new Date(actividad.fechaInicio));
         }
-        
         if (actividad.fechaFin) {
-          const fechaFin = new Date(actividad.fechaFin);
-          document.getElementById('editarFechaFin').value = formatearFechaParaInput(fechaFin);
+          document.getElementById('editarFechaFin').value = formatearFechaParaInput(new Date(actividad.fechaFin));
         }
-        
-        // ═══════════════════════════════════════════════════════════
-        // CONTROL DE PERMISOS POR ROL
-        // ═══════════════════════════════════════════════════════════
-        
-        const rolUsuario = usuarioActual?.rol;
-        
-        // COLABORADOR: Solo puede editar Estado y Avance
-        if (rolUsuario === 'Colaborador') {
-          document.getElementById('editarTitulo').disabled = true;
-          document.getElementById('editarDescripcion').disabled = true;
-          document.getElementById('editarPrioridad').disabled = true;
-          document.getElementById('editarFechaInicio').disabled = true;
-          document.getElementById('editarFechaFin').disabled = true;
-          
-          // Opcional: Ocultar campos en lugar de deshabilitarlos
-          document.getElementById('editarTitulo').closest('.form-group').style.display = 'none';
-          document.getElementById('editarDescripcion').closest('.form-group').style.display = 'none';
-          document.getElementById('editarPrioridad').closest('.form-group').style.display = 'none';
-          document.getElementById('editarFechaInicio').closest('.form-group').style.display = 'none';
-          document.getElementById('editarFechaFin').closest('.form-group').style.display = 'none';
-          
-          // Mostrar mensaje informativo
-          const modalBody = document.querySelector('#modalEditarActividad .modal-body');
-          let infoMsg = modalBody.querySelector('.info-colaborador');
-          if (!infoMsg) {
-            infoMsg = document.createElement('div');
-            infoMsg.className = 'info-colaborador';
-            infoMsg.style.cssText = 'background: rgba(255, 76, 0, 0.1); border-left: 4px solid var(--primary); padding: 12px; margin-bottom: 20px; border-radius: 8px; font-size: 13px; color: var(--text);';
-            infoMsg.innerHTML = '<strong style="color: var(--primary);">ℹ️ Permisos de Colaborador</strong><br>Solo puedes actualizar el <b>Estado</b> y el <b>Porcentaje de Avance</b> de esta actividad.';
-            modalBody.insertBefore(infoMsg, modalBody.firstChild);
-          }
-        }
-        // JEFATURA: No puede editar Título ni Descripción  
-        else if (rolUsuario === 'Jefatura') {
-          document.getElementById('editarTitulo').disabled = true;
-          document.getElementById('editarDescripcion').disabled = true;
-          
-          // Habilitar el resto
-          document.getElementById('editarEstado').disabled = false;
-          document.getElementById('editarAvance').disabled = false;
-          document.getElementById('editarPrioridad').disabled = false;
-          document.getElementById('editarFechaInicio').disabled = false;
-          document.getElementById('editarFechaFin').disabled = false;
-          
-          // Mostrar todos los grupos
-          document.querySelectorAll('#modalEditarActividad .form-group').forEach(group => {
-            group.style.display = '';
-          });
-          
-          // Remover mensaje de colaborador si existe
-          const infoMsg = document.querySelector('#modalEditarActividad .info-colaborador');
-          if (infoMsg) infoMsg.remove();
-          
-          // Agregar mensaje para jefatura
-          const modalBody = document.querySelector('#modalEditarActividad .modal-body');
-          let infoMsgJefe = modalBody.querySelector('.info-jefatura');
-          if (!infoMsgJefe) {
-            infoMsgJefe = document.createElement('div');
-            infoMsgJefe.className = 'info-jefatura';
-            infoMsgJefe.style.cssText = 'background: rgba(255, 76, 0, 0.1); border-left: 4px solid var(--primary); padding: 12px; margin-bottom: 20px; border-radius: 8px; font-size: 13px; color: var(--text);';
-            infoMsgJefe.innerHTML = '<strong style="color: var(--primary);">ℹ️ Permisos de Jefatura</strong><br>No puedes editar el <b>Título</b> ni la <b>Descripción</b>. Estos campos solo pueden ser modificados por Gerencia.';
-            modalBody.insertBefore(infoMsgJefe, modalBody.firstChild);
-          }
-        }
-        // GERENCIA: Puede editar todo
-        else if (rolUsuario === 'Gerencia') {
-          // Habilitar todos los campos
-          document.getElementById('editarTitulo').disabled = false;
-          document.getElementById('editarDescripcion').disabled = false;
-          document.getElementById('editarEstado').disabled = false;
-          document.getElementById('editarAvance').disabled = false;
-          document.getElementById('editarPrioridad').disabled = false;
-          document.getElementById('editarFechaInicio').disabled = false;
-          document.getElementById('editarFechaFin').disabled = false;
-          
-          // Mostrar todos los grupos
-          document.querySelectorAll('#modalEditarActividad .form-group').forEach(group => {
-            group.style.display = '';
-          });
-          
-          // Remover mensajes informativos
-          const infoMsg = document.querySelector('#modalEditarActividad .info-colaborador');
-          if (infoMsg) infoMsg.remove();
-          const infoMsgJefe = document.querySelector('#modalEditarActividad .info-jefatura');
-          if (infoMsgJefe) infoMsgJefe.remove();
-        }
-        
-        // Abrir el modal
+
+        // Todos los campos habilitados para todos los roles
+        ['editarTitulo','editarDescripcion','editarEstado','editarAvance',
+         'editarPrioridad','editarFechaInicio','editarFechaFin'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.disabled = false;
+        });
+
+        // Mostrar todos los grupos
+        document.querySelectorAll('#modalEditarActividad .form-group').forEach(function(g) {
+          g.style.display = '';
+        });
+
+        // Limpiar mensajes de roles anteriores
+        ['info-colaborador','info-jefatura'].forEach(function(cls) {
+          var el = document.querySelector('#modalEditarActividad .' + cls);
+          if (el) el.remove();
+        });
+
         document.getElementById('modalEditarActividad').classList.add('active');
       }
 
       function guardarEdicionActividad() {
-        const id = document.getElementById('editarId').value;
-        const rolUsuario = usuarioActual?.rol;
-        
-        // Construir objeto de cambios según permisos
-        const cambios = {};
-        
-        // Campos que todos pueden editar
-        cambios.estado = document.getElementById('editarEstado').value;
-        cambios.avance = parseInt(document.getElementById('editarAvance').value) || 0;
-        
-        // Campos solo para Jefatura y Gerencia
-        if (rolUsuario === 'Jefatura' || rolUsuario === 'Gerencia') {
-          cambios.prioridad = document.getElementById('editarPrioridad').value;
-          cambios.fechaInicio = document.getElementById('editarFechaInicio').value;
-          cambios.fechaFin = document.getElementById('editarFechaFin').value;
-        }
-        
-        // Campos solo para Gerencia
-        if (rolUsuario === 'Gerencia') {
-          cambios.titulo = document.getElementById('editarTitulo').value;
-          cambios.descripcion = document.getElementById('editarDescripcion').value;
-        }
-        
-        // Validación
-        // Solo validar título si el rol puede editarlo (Gerencia)
-        if (rolUsuario === 'Gerencia' && !cambios.titulo) {
-          alert('El título es obligatorio');
-          return;
-        }
-        
-        if (cambios.avance < 0 || cambios.avance > 100) {
-          alert('El avance debe estar entre 0 y 100');
-          return;
-        }
-        
-        console.log('Guardando cambios:', cambios);
+        var id     = document.getElementById('editarId').value;
+        var avance = parseInt(document.getElementById('editarAvance').value) || 0;
+        var estado = document.getElementById('editarEstado').value;
+
+        if (!estado) { alert('El estado es obligatorio'); return; }
+        if (avance < 0 || avance > 100) { alert('El avance debe estar entre 0 y 100'); return; }
+
+        var cambios = {
+          titulo:      document.getElementById('editarTitulo').value,
+          descripcion: document.getElementById('editarDescripcion').value,
+          estado:      estado,
+          avance:      avance,
+          prioridad:   document.getElementById('editarPrioridad').value,
+          fechaInicio: document.getElementById('editarFechaInicio').value,
+          fechaFin:    document.getElementById('editarFechaFin').value
+        };
+
+        if (!cambios.titulo) { alert('El t\u00edtulo es obligatorio'); return; }
+
         mostrarLoading(true);
-        
+
         google.script.run
           .withSuccessHandler(function(resultado) {
             mostrarLoading(false);
-            
             if (resultado.success) {
-              alert('✅ Actividad actualizada correctamente');
+              mostrarNotificacionTemporal('&#x2705; Actividad actualizada correctamente', 3000);
               cerrarModal('modalEditarActividad');
-              cargarActividades(); // Recargar la tabla
+              cargarActividades();
             } else {
               alert('Error: ' + (resultado.message || 'No se pudo actualizar'));
             }
           })
           .withFailureHandler(function(error) {
             mostrarLoading(false);
-            alert('❌ Error al guardar: ' + (error.message || error));
+            alert('&#x274C; Error al guardar: ' + (error.message || error));
           })
           .actualizarActividad(id, cambios);
       }

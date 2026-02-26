@@ -574,6 +574,82 @@ function obtenerActividades(filtros = {}) {
 }
 
 /**
+ * Ejecutada por el trigger diario a las 8am.
+ * Marca como 'Vencida' toda actividad con fechaFin < hoy
+ * cuyo estado sea Pendiente, En Proceso o En Revisión.
+ * Envía email al responsable y al jefe.
+ * Registra en la hoja 'Historial de Vencimientos'.
+ */
+function marcarActividadesVencidas() {
+  try {
+    Logger.log('=== TRIGGER: marcarActividadesVencidas ===');
+
+    const ss      = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet   = ss.getSheetByName('Actividades');
+    if (!sheet) { Logger.log('Sin hoja Actividades'); return; }
+
+    // Obtener o crear hoja de historial
+    let histSheet = ss.getSheetByName('Historial de Vencimientos');
+    if (!histSheet) {
+      histSheet = ss.insertSheet('Historial de Vencimientos');
+      histSheet.getRange(1, 1, 1, 6).setValues([[
+        'Fecha Marcado', 'ID Actividad', 'Título', 'Responsable', 'Jefe', 'Fecha Fin Original'
+      ]]).setFontWeight('bold').setBackground('#2c3e50').setFontColor('#ffffff');
+    }
+
+    const data    = sheet.getDataRange().getValues();
+    const ahora   = new Date();
+    const hoy     = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const estados = ['Pendiente', 'En Proceso', 'En Revisión'];
+    let   marcadas = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0]) continue;
+
+      const estadoActual = data[i][7]  || '';
+      const fechaFin     = data[i][10] ? new Date(data[i][10]) : null;
+
+      if (!fechaFin || !estados.includes(estadoActual)) continue;
+
+      const fechaFinSoloFecha = new Date(
+        fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate()
+      );
+
+      if (fechaFinSoloFecha >= hoy) continue; // No vencida aún
+
+      const filaSheet = i + 1;
+      const id          = data[i][0];
+      const titulo      = data[i][2] || '';
+      const responsable = data[i][4] || '';
+      const jefe        = data[i][5] || '';
+
+      // Marcar como Vencida
+      sheet.getRange(filaSheet, 8).setValue('Vencida');
+      sheet.getRange(filaSheet, 13).setValue(ahora);
+
+      // Registrar en historial
+      histSheet.appendRow([
+        ahora, id, titulo, responsable, jefe,
+        fechaFin instanceof Date ? fechaFin.toLocaleDateString('es-CL') : fechaFin
+      ]);
+
+      // Enviar emails
+      enviarEmailVencimiento({ id, titulo, responsable, jefe, fechaFin });
+
+      marcadas++;
+      Logger.log('Marcada como Vencida: ' + id + ' - ' + titulo);
+    }
+
+    Logger.log('Total marcadas: ' + marcadas);
+
+  } catch(error) {
+    Logger.log('ERROR en marcarActividadesVencidas: ' + error.toString());
+  }
+}
+
+
+
+/**
  * Actualiza una actividad
  */
 function actualizarActividad(id, cambios) {
@@ -599,14 +675,45 @@ function actualizarActividad(id, cambios) {
     const fechaFin     = fila[10] ? new Date(fila[10]) : null;
     const ahora        = new Date();
 
-    // ── Lógica de vencimiento al completar ───────────────
-    if (cambios.estado === 'Completada') {
-      const estaVencida   = estadoActual === 'Vencida';
-      const yaVencioFecha = fechaFin && fechaFin < ahora;
+    // ── Reactivar Vencida si se extiende la fecha ────────
+    if (estadoActual === 'Vencida' && cambios.fechaFin) {
+      const nuevaFechaFin = new Date(cambios.fechaFin);
+      if (nuevaFechaFin > ahora) {
+        // Forzar En Proceso independientemente de lo que traiga el select
+        cambios.estado = 'En Proceso';
+        Logger.log('Vencida reactivada a En Proceso por nueva fechaFin');
+      }
+    }
 
+    // ── Completar con atraso ─────────────────────────────
+    if (cambios.estado === 'Completada') {
+      const fechaFinEfectiva = cambios.fechaFin ? new Date(cambios.fechaFin) : fechaFin;
+      const estaVencida      = estadoActual === 'Vencida';
+      const yaVencioFecha    = fechaFinEfectiva && fechaFinEfectiva < ahora;
       if (estaVencida || yaVencioFecha) {
-        Logger.log('Actividad completada con atraso');
         cambios.estado = 'Completada con Atraso';
+        Logger.log('Completada con atraso');
+      }
+    }
+
+    // ── Estado → Avance automático ───────────────────────
+    const estadoFinal = cambios.estado !== undefined ? cambios.estado : estadoActual;
+    if (estadoFinal === 'Completada' || estadoFinal === 'Completada con Atraso') {
+      cambios.avance = 100;
+    } else if (estadoFinal === 'Pendiente') {
+      if (cambios.avance === undefined) cambios.avance = 0;
+    }
+
+    // ── Avance → Estado automático ───────────────────────
+    if (cambios.avance !== undefined && cambios.estado === undefined) {
+      const avance = Number(cambios.avance);
+      if (avance === 100) {
+        const yaVencioFecha = fechaFin && fechaFin < ahora;
+        cambios.estado = (estadoActual === 'Vencida' || yaVencioFecha)
+          ? 'Completada con Atraso'
+          : 'Completada';
+      } else if (avance === 0 && estadoActual === 'Completada') {
+        cambios.estado = 'Pendiente';
       }
     }
 
@@ -650,11 +757,88 @@ function actualizarActividad(id, cambios) {
       );
     } catch(e) { Logger.log('Error historial: ' + e); }
 
+    // ── Email de completado ───────────────────────────────
+    const estadoGuardado = cambios.estado || estadoActual;
+    if (estadoGuardado === 'Completada' || estadoGuardado === 'Completada con Atraso') {
+      try {
+        const tituloAct     = cambios.titulo      || fila[2] || '';
+        const responsableAct = cambios.responsable || fila[4] || '';
+        const jefeAct        = cambios.jefe        || fila[5] || '';
+        const fechaFinAct    = cambios.fechaFin    ? new Date(cambios.fechaFin) : fechaFin;
+
+        enviarEmailCompletado({
+          id,
+          titulo:      tituloAct,
+          responsable: responsableAct,
+          jefe:        jefeAct,
+          fechaFin:    fechaFinAct,
+          estado:      estadoGuardado,
+          completadoPor: usuario.email
+        });
+      } catch(e) { Logger.log('Error email completado: ' + e); }
+    }
+
     return { success: true, message: 'Actividad actualizada' };
 
   } catch(error) {
     Logger.log('Error en actualizarActividad: ' + error.toString());
     return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Envía email de confirmación al responsable y jefe
+ * cuando una actividad es completada (a tiempo o con atraso).
+ */
+/**
+ * Envía email de confirmación al responsable y jefe
+ * cuando una actividad es completada (a tiempo o con atraso).
+ */
+function enviarEmailCompletado(actividad) {
+  try {
+    const conAtraso = actividad.estado === 'Completada con Atraso';
+    const asunto    = conAtraso
+      ? '[Atraso] Actividad completada: ' + actividad.titulo
+      : '[Completada] Actividad finalizada: ' + actividad.titulo;
+
+    const fechaFinStr = actividad.fechaFin instanceof Date
+      ? actividad.fechaFin.toLocaleDateString('es-CL')
+      : (actividad.fechaFin || 'No definida');
+
+    const cuerpo = `
+Hola,
+
+La siguiente actividad ha sido marcada como "${actividad.estado}":
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Actividad:    ${actividad.titulo}
+🆔 ID:           ${actividad.id}
+📅 Fecha límite: ${fechaFinStr}
+👤 Completada por: ${actividad.completadoPor}
+📊 Estado final: ${actividad.estado}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${conAtraso ? '\n⚠️  Esta actividad fue completada fuera del plazo original.\n' : ''}
+— Sistema de Actividades | ZaazMago
+    `.trim();
+
+    // Email al responsable
+    if (actividad.responsable) {
+      try {
+        MailApp.sendEmail({ to: actividad.responsable, subject: asunto, body: cuerpo });
+        Logger.log('Email completado enviado a: ' + actividad.responsable);
+      } catch(e) { Logger.log('Error email responsable: ' + e); }
+    }
+
+    // Email al jefe (si es diferente al responsable)
+    if (actividad.jefe && actividad.jefe !== actividad.responsable) {
+      try {
+        MailApp.sendEmail({ to: actividad.jefe, subject: asunto, body: cuerpo });
+        Logger.log('Email completado enviado a jefe: ' + actividad.jefe);
+      } catch(e) { Logger.log('Error email jefe: ' + e); }
+    }
+
+  } catch(error) {
+    Logger.log('Error en enviarEmailCompletado: ' + error.toString());
   }
 }
 
@@ -732,12 +916,13 @@ function marcarActividadesVencidas() {
   }
 }
 
+
 /**
  * Envía email de alerta a responsable y jefe cuando una actividad vence.
  */
 function enviarEmailVencimiento(actividad) {
   try {
-    const asunto = '⚠️ Actividad vencida: ' + actividad.titulo;
+    const asunto = '[Vencida] Actividad sin completar: ' + actividad.titulo;
 
     const cuerpo = `
 Hola,
@@ -804,7 +989,6 @@ function crearTriggerDiario() {
   Logger.log('✅ Trigger diario creado: marcarActividadesVencidas() a las 8am');
   return 'Trigger creado correctamente';
 }
-
 
 /**
  * Valida permisos de edición
