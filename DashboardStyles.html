@@ -327,6 +327,24 @@
   .badge-vencida            { background: rgba(241,98,77,.25);  color: #f1624d;       border: 1px solid #f1624d;       font-weight: 700; }
   .badge-completada-con-atraso { background: rgba(242,150,56,.2); color: #f29638;    border: 1px solid #f29638;       font-weight: 600; }
 
+  .slot-libre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .slot-libre:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+  .badge-completada-con-atraso { background: rgba(242,150,56,.2); color: #f29638;    border: 1px solid #f29638;       font-weight: 600; }
+
   /* Prioridades (con borde) */
   .badge-alta               { background: rgba(241,98,77,.2);   color: var(--progress-danger); border: 1px solid var(--progress-danger); }
   .badge-media              { background: rgba(242,150,56,.2);  color: var(--stat-4);           border: 1px solid var(--stat-4); }

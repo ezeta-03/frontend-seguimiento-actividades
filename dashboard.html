@@ -1619,19 +1619,22 @@
 
         google.script.run
           .withSuccessHandler(function(resultado) {
+            mostrarLoading(false);
             if (!resultado || !resultado.success) {
+              if (resultado && resultado.cruce) {
+                mostrarAvisoCruce(resultado, 'nueva');
+                return;
+              }
               alert("Error al guardar la actividad: " + (resultado ? resultado.message : "Respuesta nula"));
-              mostrarLoading(false);
               return;
             }
             mostrarNotificacionTemporal("Actividad creada exitosamente", 3000);
             cerrarModal("modalNuevaActividad");
             cargarActividades();
-            mostrarLoading(false);
           })
           .withFailureHandler(function(error) {
-            alert("Error al crear actividad: " + error.message);
             mostrarLoading(false);
+            alert("Error al crear actividad: " + error.message);
           })
           .crearActividad(datos);
       }
@@ -1788,15 +1791,72 @@
       }
 
       function confirmarCambioProyecto() {
-        var select     = document.getElementById('miniModalProyectoSelect');
-        var nuevoId    = select.value;
+        var select      = document.getElementById('miniModalProyectoSelect');
+        var nuevoId     = select.value;
         var nuevoNombre = select.options[select.selectedIndex].text;
-
-        // Actualizar el campo display y el hidden del modal de edición
         document.getElementById('editarProyectoId').value = nuevoId;
         document.getElementById('editarProyectoNombreDisplay').value = nuevoId ? nuevoNombre : '';
-
         cerrarModal('modalCambiarProyecto');
+      }
+
+      // ── AVISO DE CRUCE ───────────────────────────────────
+      function mostrarAvisoCruce(resultado, contexto) {
+        // Eliminar aviso anterior si existe
+        var anterior = document.getElementById('avisoCruce');
+        if (anterior) anterior.remove();
+
+        var slots = (resultado.horasLibres || []).map(function(s, i) {
+          return '<button type="button" class="slot-libre" onclick="aplicarSlot(' + i + ',\'' + contexto + '\')" ' +
+            'data-inicio="' + s.fechaInicio + '" data-fin="' + s.fechaFin + '">' +
+            '&#x1F550; ' + s.label + '</button>';
+        }).join('');
+
+        var aviso = document.createElement('div');
+        aviso.id = 'avisoCruce';
+        aviso.innerHTML =
+          '<div style="background:rgba(241,98,77,.1);border:1px solid #f1624d;border-radius:8px;padding:14px 16px;margin-bottom:16px;">' +
+            '<p style="color:#f1624d;font-weight:700;margin:0 0 6px;">&#x26A0;&#xFE0F; Cruce de horario detectado</p>' +
+            '<p style="font-size:13px;margin:0 0 10px;color:var(--text-primary);">Esta actividad se cruza con <strong>"' + resultado.actividad + '"</strong>.</p>' +
+            '<p style="font-size:12px;color:var(--text-secondary);margin:0 0 8px;">Haz clic en un horario disponible para ajustar las fechas:</p>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + slots + '</div>' +
+          '</div>';
+
+        // Insertarlo al inicio del modal correspondiente
+        var modalId = contexto === 'nueva' ? 'modalNuevaActividad' : 'modalEditarActividad';
+        var modalBody = document.querySelector('#' + modalId + ' .modal-body');
+        if (modalBody) modalBody.insertBefore(aviso, modalBody.firstChild);
+
+        // Scroll al aviso
+        aviso.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function aplicarSlot(index, contexto) {
+        var slots = document.querySelectorAll('#avisoCruce .slot-libre');
+        var slot  = slots[index];
+        if (!slot) return;
+
+        var ini = slot.getAttribute('data-inicio');
+        var fin = slot.getAttribute('data-fin');
+
+        if (contexto === 'nueva') {
+          var fi = document.getElementById('fechaInicio');
+          var ff = document.getElementById('fechaFin');
+          if (fi) fi.value = formatearFechaParaInput(new Date(ini));
+          if (ff) ff.value = formatearFechaParaInput(new Date(fin));
+        } else {
+          var fi2 = document.getElementById('editarFechaInicio');
+          var ff2 = document.getElementById('editarFechaFin');
+          if (fi2) fi2.value = formatearFechaParaInput(new Date(ini));
+          if (ff2) ff2.value = formatearFechaParaInput(new Date(fin));
+        }
+
+        // Resaltar slot seleccionado
+        slots.forEach(function(s) { s.style.background = ''; s.style.color = ''; });
+        slot.style.background = 'var(--primary)';
+        slot.style.color      = '#fff';
+
+        // Notificación
+        mostrarNotificacionTemporal('Horario actualizado \u2014 revisa y guarda', 3000);
       }
 
       function guardarEdicionActividad() {
@@ -1829,13 +1889,15 @@
               mostrarNotificacionTemporal('Actividad actualizada correctamente', 3000);
               cerrarModal('modalEditarActividad');
               cargarActividades();
+            } else if (resultado.cruce) {
+              mostrarAvisoCruce(resultado, 'editar');
             } else {
               alert('Error: ' + (resultado.message || 'No se pudo actualizar'));
             }
           })
           .withFailureHandler(function(error) {
             mostrarLoading(false);
-            alert('&#x274C; Error al guardar: ' + (error.message || error));
+            alert('Error al guardar: ' + (error.message || error));
           })
           .actualizarActividad(id, cambios);
       }

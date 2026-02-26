@@ -464,7 +464,20 @@ function crearActividad(datos) {
     Logger.log('ColaboradoresAdicionales: '+ colaboradoresAdicionales.join(','));
 
     const ahora = new Date();
-
+if (usuario.rol === "Jefatura" || usuario.rol === "Colaborador") {
+  const ini = datos.fechaInicio ? new Date(datos.fechaInicio) : null;
+  const fin = datos.fechaFin ? new Date(datos.fechaFin) : null;
+  if (ini && fin) {
+    const cruce = verificarCruceYSugerencias(datos.responsable, ini, fin, null);
+    if (cruce.cruce)
+      return {
+        success: false,
+        cruce: true,
+        actividad: cruce.actividad,
+        horasLibres: cruce.horasLibres,
+      };
+  }
+}
     sheet.appendRow([
       id,                                            // A  ID
       datos.proyectoId  || '',                       // B  ProyectoID
@@ -703,6 +716,30 @@ function actualizarActividad(id, cambios) {
     const estadoActual = fila[7]  || '';
     const fechaFin     = fila[10] ? new Date(fila[10]) : null;
     const ahora        = new Date();
+
+if (usuario.rol === "Jefatura" || usuario.rol === "Colaborador") {
+  const ini = cambios.fechaInicio
+    ? new Date(cambios.fechaInicio)
+    : fechaInicio
+      ? new Date(fechaInicio)
+      : null;
+  const fin = cambios.fechaFin
+    ? new Date(cambios.fechaFin)
+    : fechaFin
+      ? new Date(fechaFin)
+      : null;
+  const resp = cambios.responsable || fila[4];
+  if (ini && fin) {
+    const cruce = verificarCruceYSugerencias(resp, ini, fin, id);
+    if (cruce.cruce)
+      return {
+        success: false,
+        cruce: true,
+        actividad: cruce.actividad,
+        horasLibres: cruce.horasLibres,
+      };
+  }
+}
 
     // ── Reactivar Vencida si se extiende la fecha ────────
     if (estadoActual === 'Vencida' && cambios.fechaFin) {
@@ -3384,3 +3421,127 @@ function reanudarActividadesSuspendidas(emailColaborador) {
     throw error;
   }
 }
+
+function verificarCruceYSugerencias(responsableEmail, nuevaInicio, nuevaFin, excluirId) {
+  try {
+    const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('Actividades');
+    if (!sheet) return { cruce: false };
+
+    const data    = sheet.getDataRange().getValues();
+    const activas = ['Pendiente', 'En Proceso', 'En Revisión'];
+    const duracionMs = nuevaFin - nuevaInicio;
+
+    // Recopilar todas las actividades del responsable que estén activas
+    const bloques = [];
+    let actividadCruce = null;
+
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0]) continue;
+      if (data[i][0] === excluirId) continue;
+      if (data[i][4] !== responsableEmail) continue; // col E = responsable
+      if (!activas.includes(data[i][7])) continue;   // col H = estado
+
+      const ini = data[i][9]  ? new Date(data[i][9])  : null; // col J
+      const fin = data[i][10] ? new Date(data[i][10]) : null; // col K
+      if (!ini || !fin) continue;
+
+      bloques.push({ ini, fin, titulo: data[i][2] || 'Sin título' });
+
+      // Detectar cruce: nuevaInicio < fin existente Y nuevaFin > ini existente
+      if (nuevaInicio < fin && nuevaFin > ini) {
+        actividadCruce = data[i][2] || 'Sin título';
+      }
+    }
+
+    if (!actividadCruce) return { cruce: false };
+
+    // ── Calcular slots libres en próximos 3 días con disponibilidad ──
+    const horasLibres = [];
+    let diaActual    = new Date(nuevaInicio);
+    diaActual.setHours(0, 0, 0, 0);
+    let diasConSlots = 0;
+    let intentos     = 0;
+
+    while (diasConSlots < 3 && intentos < 30) {
+      intentos++;
+
+      // Bloques ocupados ese día
+      const bloquesDelDia = bloques
+        .filter(function(b) {
+          return b.ini.toDateString() === diaActual.toDateString() ||
+                 b.fin.toDateString() === diaActual.toDateString() ||
+                 (b.ini <= diaActual && b.fin >= new Date(diaActual.getTime() + 86400000));
+        })
+        .map(function(b) { return { ini: b.ini, fin: b.fin }; })
+        .sort(function(a, b) { return a.ini - b.ini; });
+
+      // Generar slots libres del día (00:00 a 23:59)
+      const inicioDia = new Date(diaActual); inicioDia.setHours(0, 0, 0, 0);
+      const finDia    = new Date(diaActual); finDia.setHours(23, 59, 59, 0);
+
+      const slotsDelDia = [];
+      let cursor = new Date(inicioDia);
+
+      bloquesDelDia.forEach(function(b) {
+        const bIni = b.ini < inicioDia ? inicioDia : b.ini;
+        const bFin = b.fin > finDia    ? finDia    : b.fin;
+
+        if (cursor < bIni) {
+          const gapMs = bIni - cursor;
+          if (gapMs >= duracionMs) {
+            const slotFin = new Date(cursor.getTime() + duracionMs);
+            slotsDelDia.push(formatSlot(diaActual, cursor, slotFin));
+          }
+        }
+        if (bFin > cursor) cursor = new Date(bFin);
+      });
+
+      // Gap al final del día
+      if (cursor < finDia) {
+        const gapMs = finDia - cursor;
+        if (gapMs >= duracionMs) {
+          const slotFin = new Date(cursor.getTime() + duracionMs);
+          slotsDelDia.push(formatSlot(diaActual, cursor, slotFin));
+        }
+      }
+
+      // Si no hay bloques ese día, todo el día es libre
+      if (bloquesDelDia.length === 0) {
+        const slotFin = new Date(inicioDia.getTime() + duracionMs);
+        slotsDelDia.push(formatSlot(diaActual, inicioDia, slotFin));
+      }
+
+      if (slotsDelDia.length > 0) {
+        // Tomar máximo 2 slots por día
+        slotsDelDia.slice(0, 2).forEach(function(s) { horasLibres.push(s); });
+        diasConSlots++;
+      }
+
+      // Avanzar al día siguiente
+      diaActual = new Date(diaActual.getTime() + 86400000);
+    }
+
+    return {
+      cruce:       true,
+      actividad:   actividadCruce,
+      horasLibres: horasLibres
+    };
+
+  } catch(e) {
+    Logger.log('verificarCruceYSugerencias error: ' + e);
+    return { cruce: false };
+  }
+}
+
+function formatSlot(dia, ini, fin) {
+  const fecha = Utilities.formatDate(dia, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  const hIni  = Utilities.formatDate(ini, Session.getScriptTimeZone(), 'HH:mm');
+  const hFin  = Utilities.formatDate(fin, Session.getScriptTimeZone(), 'HH:mm');
+  return {
+    label:      fecha + '  ' + hIni + ' – ' + hFin,
+    fechaInicio: ini.toISOString(),
+    fechaFin:    fin.toISOString()
+  };
+}
+
