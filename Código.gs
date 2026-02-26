@@ -7,6 +7,13 @@
 // CONFIGURACIÓN GLOBAL
 // ============================================
 
+function testVencimiento() {
+  // Cambia este ID por el ID real de una actividad que ya pasó su fecha fin
+  const resultado = actualizarActividad('ACT-XXXXX', { estado: 'Completada' });
+  Logger.log(JSON.stringify(resultado));
+}
+
+
 const CONFIG = {
   SPREADSHEET_ID: '1UfMW9IwFavcxoUAVGKDQeacall_Pfn-O63IuQZZTK7s',
   CALENDAR_ID: 'primary',
@@ -20,6 +27,8 @@ const CONFIG = {
     EN_PROCESO: 'En Proceso',
     REVISION: 'En Revisión',
     COMPLETADA: 'Completada',
+    VENCIDA: 'Vencida',
+    COMPLETADA_CON_ATRASO: 'Completada con Atraso',
     CANCELADA: 'Cancelada',
     SUSPENDIDA: 'Suspendida'
   },
@@ -569,165 +578,233 @@ function obtenerActividades(filtros = {}) {
  */
 function actualizarActividad(id, cambios) {
   try {
-    Logger.log('');
-    Logger.log('═══════════════════════════════════════════');
-    Logger.log('ACTUALIZANDO ACTIVIDAD: ' + id);
-    Logger.log('Cambios: ' + JSON.stringify(cambios));
-    
+    Logger.log('=== ACTUALIZANDO ACTIVIDAD: ' + id + ' ===');
     const usuario = obtenerUsuarioActual();
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+
+    const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     const sheet = ss.getSheetByName('Actividades');
-    const data = sheet.getDataRange().getValues();
+    if (!sheet) return { success: false, message: 'Hoja no encontrada' };
+
+    const data     = sheet.getDataRange().getValues();
+    let   filaIdx  = -1;
 
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === id) {
-        
-        // GUARDAR ProyectoID ANTES de validar
-        const proyectoId = data[i][1]; // Columna B
-        const tituloActividad = data[i][2]; // Columna C
-        
-        Logger.log('✅ Actividad encontrada: "' + tituloActividad + '"');
-        Logger.log('📁 ProyectoID: "' + proyectoId + '"');
-        
-        const actividad = {
-          id: data[i][0],
-          proyectoId: proyectoId,
-          titulo: tituloActividad,
-          responsable: data[i][4],
-          jefe: data[i][5],
-          gerente: data[i][6]
-        };
+      if (data[i][0] === id) { filaIdx = i + 1; break; }
+    }
 
-        // Validar permisos
-        if (!validarPermisosEdicion(usuario, actividad)) {
-          Logger.log('❌ Permisos denegados para: ' + usuario.email);
-          throw new Error('No tienes permisos para editar esta actividad');
-        }
+    if (filaIdx === -1) return { success: false, message: 'Actividad no encontrada' };
 
-        Logger.log('✅ Permisos OK para: ' + usuario.email);
+    const fila         = sheet.getRange(filaIdx, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const estadoActual = fila[7]  || '';
+    const fechaFin     = fila[10] ? new Date(fila[10]) : null;
+    const ahora        = new Date();
 
-        // NUEVA VALIDACIÓN: Colaboradores no pueden editar ciertos campos
-        if (usuario.rol === CONFIG.ROLES.COLABORADOR) {
-          const camposProhibidos = ['titulo', 'descripcion', 'prioridad', 'fechaInicio', 'fechaFin', 'responsable', 'jefe', 'gerente'];
-          const intentoProhibido = camposProhibidos.some(campo => cambios[campo] !== undefined);
-          
-          if (intentoProhibido) {
-            Logger.log('❌ Colaborador intentó editar campos prohibidos');
-            throw new Error('Como colaborador, solo puedes editar el estado y el avance de la actividad');
-          }
-          
-          Logger.log('✅ Validación de campos para Colaborador: OK');
-        }
-        
-        // NUEVA VALIDACIÓN: Jefatura no puede editar título/descripción
-        if (usuario.rol === CONFIG.ROLES.JEFATURA) {
-          const camposProhibidos = ['titulo', 'descripcion'];
-          const intentoProhibido = camposProhibidos.some(campo => cambios[campo] !== undefined);
-          
-          if (intentoProhibido) {
-            Logger.log('❌ Jefatura intentó editar título/descripción');
-            throw new Error('Como jefe, no puedes editar el título ni la descripción de la actividad');
-          }
-          
-          Logger.log('✅ Validación de campos para Jefatura: OK');
-        }
+    // ── Lógica de vencimiento al completar ───────────────
+    if (cambios.estado === 'Completada') {
+      const estaVencida   = estadoActual === 'Vencida';
+      const yaVencioFecha = fechaFin && fechaFin < ahora;
 
-        // Actualizar campos
-        const fila = i + 1;
-        let huboCambioEnAvance = false;
-        
-        // Solo permitir cambios en campos autorizados
-        if (cambios.titulo !== undefined && usuario.rol === CONFIG.ROLES.GERENCIA) {
-          sheet.getRange(fila, 3).setValue(cambios.titulo);
-          Logger.log('  • Título actualizado');
-        }
-        
-        if (cambios.descripcion !== undefined && usuario.rol === CONFIG.ROLES.GERENCIA) {
-          sheet.getRange(fila, 4).setValue(cambios.descripcion);
-          Logger.log('  • Descripción actualizada');
-        }
-        
-        if (cambios.estado !== undefined) {
-          sheet.getRange(fila, 8).setValue(cambios.estado);
-          Logger.log('  • Estado → ' + cambios.estado);
-          
-          // Auto-completar si es "Completada"
-          if (cambios.estado === 'Completada' && cambios.avance === undefined) {
-            sheet.getRange(fila, 14).setValue(100);
-            Logger.log('  • Avance AUTO → 100%');
-            huboCambioEnAvance = true;
-          }
-        }
-        
-        if (cambios.prioridad !== undefined && usuario.rol !== CONFIG.ROLES.COLABORADOR) {
-          sheet.getRange(fila, 9).setValue(cambios.prioridad);
-          Logger.log('  • Prioridad actualizada');
-        }
-        
-        if (cambios.fechaInicio !== undefined && usuario.rol !== CONFIG.ROLES.COLABORADOR) {
-          sheet.getRange(fila, 10).setValue(new Date(cambios.fechaInicio));
-          Logger.log('  • Fecha inicio actualizada');
-        }
-        
-        if (cambios.fechaFin !== undefined && usuario.rol !== CONFIG.ROLES.COLABORADOR) {
-          sheet.getRange(fila, 11).setValue(new Date(cambios.fechaFin));
-          Logger.log('  • Fecha fin actualizada');
-        }
-        
-        // Actualizar avance manual
-        if (cambios.avance !== undefined) {
-          const avance = parseInt(cambios.avance) || 0;
-          sheet.getRange(fila, 14).setValue(avance);
-          Logger.log('  • Avance → ' + avance + '%');
-          huboCambioEnAvance = true;
-        }
-
-        // Actualizar timestamp
-        sheet.getRange(fila, 13).setValue(new Date());
-        Logger.log('  • Timestamp actualizado');
-
-        // FORZAR GUARDAR antes de actualizar proyecto
-        SpreadsheetApp.flush();
-        Logger.log('💾 Cambios guardados en la hoja');
-
-        // ACTUALIZAR PROYECTO si hay cambio en avance
-        if (huboCambioEnAvance || cambios.estado === 'Completada') {
-          Logger.log('');
-          Logger.log('🚀 INICIANDO ACTUALIZACIÓN DE PROYECTO...');
-          
-          if (proyectoId && proyectoId !== '' && proyectoId !== null) {
-            Logger.log('Llamando a actualizarAvanceEnProyecto("' + proyectoId + '")');
-            actualizarAvanceEnProyecto(proyectoId);
-          } else {
-            Logger.log('⚠️ Actividad sin proyecto asociado');
-          }
-        } else {
-          Logger.log('ℹ️ No se modificó el avance, no se actualiza el proyecto');
-        }
-
-        // Historial (opcional)
-        try {
-          const detalles = Object.keys(cambios).map(key => `${key}: ${cambios[key]}`).join(', ');
-          registrarHistorial(id, usuario.email, 'Actualización', detalles);
-        } catch (e) {
-          Logger.log('⚠️ Historial no registrado: ' + e.toString());
-        }
-
-        Logger.log('');
-        Logger.log('✅ ACTIVIDAD ACTUALIZADA EXITOSAMENTE');
-        Logger.log('═══════════════════════════════════════════');
-        
-        return { success: true, message: 'Actividad actualizada' };
+      if (estaVencida || yaVencioFecha) {
+        Logger.log('Actividad completada con atraso');
+        cambios.estado = 'Completada con Atraso';
       }
     }
 
-    throw new Error('Actividad no encontrada');
-    
-  } catch (error) {
-    Logger.log('❌ ERROR en actualizarActividad: ' + error.toString());
-    throw error;
+    // ── Aplicar cambios celda por celda ──────────────────
+    const mapa = {
+      titulo:       3,   // C
+      descripcion:  4,   // D
+      responsable:  5,   // E
+      jefe:         6,   // F
+      gerente:      7,   // G
+      estado:       8,   // H
+      prioridad:    9,   // I
+      fechaInicio:  10,  // J
+      fechaFin:     11,  // K
+      avance:       14   // N
+    };
+
+    Object.keys(cambios).forEach(function(campo) {
+      if (mapa[campo] === undefined) return;
+      const col  = mapa[campo];
+      let   valor = cambios[campo];
+
+      if ((campo === 'fechaInicio' || campo === 'fechaFin') && valor) {
+        valor = new Date(valor);
+      }
+      if (campo === 'avance') valor = Number(valor) || 0;
+
+      sheet.getRange(filaIdx, col).setValue(valor);
+    });
+
+    // Actualizar ultimaActualizacion (col M = 13)
+    sheet.getRange(filaIdx, 13).setValue(ahora);
+
+    try {
+      registrarHistorial(
+        id,
+        usuario.email,
+        'Actualización',
+        'Estado: ' + (cambios.estado || estadoActual) +
+        (cambios.avance !== undefined ? ' | Avance: ' + cambios.avance + '%' : '')
+      );
+    } catch(e) { Logger.log('Error historial: ' + e); }
+
+    return { success: true, message: 'Actividad actualizada' };
+
+  } catch(error) {
+    Logger.log('Error en actualizarActividad: ' + error.toString());
+    return { success: false, message: error.toString() };
   }
 }
+
+/**
+ * Ejecutada por el trigger diario a las 8am.
+ * Marca como 'Vencida' toda actividad con fechaFin < hoy
+ * cuyo estado sea Pendiente, En Proceso o En Revisión.
+ * Envía email al responsable y al jefe.
+ * Registra en la hoja 'Historial de Vencimientos'.
+ */
+function marcarActividadesVencidas() {
+  try {
+    Logger.log('=== TRIGGER: marcarActividadesVencidas ===');
+
+    const ss      = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet   = ss.getSheetByName('Actividades');
+    if (!sheet) { Logger.log('Sin hoja Actividades'); return; }
+
+    // Obtener o crear hoja de historial
+    let histSheet = ss.getSheetByName('Historial de Vencimientos');
+    if (!histSheet) {
+      histSheet = ss.insertSheet('Historial de Vencimientos');
+      histSheet.getRange(1, 1, 1, 6).setValues([[
+        'Fecha Marcado', 'ID Actividad', 'Título', 'Responsable', 'Jefe', 'Fecha Fin Original'
+      ]]).setFontWeight('bold').setBackground('#2c3e50').setFontColor('#ffffff');
+    }
+
+    const data    = sheet.getDataRange().getValues();
+    const ahora   = new Date();
+    const hoy     = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const estados = ['Pendiente', 'En Proceso', 'En Revisión'];
+    let   marcadas = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0]) continue;
+
+      const estadoActual = data[i][7]  || '';
+      const fechaFin     = data[i][10] ? new Date(data[i][10]) : null;
+
+      if (!fechaFin || !estados.includes(estadoActual)) continue;
+
+      const fechaFinSoloFecha = new Date(
+        fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate()
+      );
+
+      if (fechaFinSoloFecha >= hoy) continue; // No vencida aún
+
+      const filaSheet = i + 1;
+      const id          = data[i][0];
+      const titulo      = data[i][2] || '';
+      const responsable = data[i][4] || '';
+      const jefe        = data[i][5] || '';
+
+      // Marcar como Vencida
+      sheet.getRange(filaSheet, 8).setValue('Vencida');
+      sheet.getRange(filaSheet, 13).setValue(ahora);
+
+      // Registrar en historial
+      histSheet.appendRow([
+        ahora, id, titulo, responsable, jefe,
+        fechaFin instanceof Date ? fechaFin.toLocaleDateString('es-CL') : fechaFin
+      ]);
+
+      // Enviar emails
+      enviarEmailVencimiento({ id, titulo, responsable, jefe, fechaFin });
+
+      marcadas++;
+      Logger.log('Marcada como Vencida: ' + id + ' - ' + titulo);
+    }
+
+    Logger.log('Total marcadas: ' + marcadas);
+
+  } catch(error) {
+    Logger.log('ERROR en marcarActividadesVencidas: ' + error.toString());
+  }
+}
+
+/**
+ * Envía email de alerta a responsable y jefe cuando una actividad vence.
+ */
+function enviarEmailVencimiento(actividad) {
+  try {
+    const asunto = '⚠️ Actividad vencida: ' + actividad.titulo;
+
+    const cuerpo = `
+Hola,
+
+La siguiente actividad ha vencido sin ser completada:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Actividad: ${actividad.titulo}
+🆔 ID: ${actividad.id}
+📅 Fecha límite: ${actividad.fechaFin instanceof Date
+  ? actividad.fechaFin.toLocaleDateString('es-CL')
+  : actividad.fechaFin}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Su estado ha sido actualizado automáticamente a "Vencida".
+
+Puedes acceder al Sistema de Actividades para tomar acción.
+
+— Sistema de Actividades | ZaazMago
+    `.trim();
+
+    // Email al responsable
+    if (actividad.responsable) {
+      try {
+        MailApp.sendEmail({ to: actividad.responsable, subject: asunto, body: cuerpo });
+        Logger.log('Email enviado a responsable: ' + actividad.responsable);
+      } catch(e) { Logger.log('Error email responsable: ' + e); }
+    }
+
+    // Email al jefe (si existe y es diferente al responsable)
+    if (actividad.jefe && actividad.jefe !== actividad.responsable) {
+      try {
+        MailApp.sendEmail({ to: actividad.jefe, subject: asunto, body: cuerpo });
+        Logger.log('Email enviado a jefe: ' + actividad.jefe);
+      } catch(e) { Logger.log('Error email jefe: ' + e); }
+    }
+
+  } catch(error) {
+    Logger.log('Error en enviarEmailVencimiento: ' + error.toString());
+  }
+}
+
+/**
+ * Instala el trigger que ejecuta marcarActividadesVencidas()
+ * todos los días a las 8am.
+ * EJECUTAR UNA SOLA VEZ manualmente desde el editor.
+ */
+function crearTriggerDiario() {
+  // Eliminar triggers existentes del mismo nombre para no duplicar
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === 'marcarActividadesVencidas') {
+      ScriptApp.deleteTrigger(trigger);
+      Logger.log('Trigger anterior eliminado');
+    }
+  });
+
+  // Crear nuevo trigger diario a las 8am
+  ScriptApp.newTrigger('marcarActividadesVencidas')
+    .timeBased()
+    .everyDays(1)
+    .atHour(8)
+    .create();
+
+  Logger.log('✅ Trigger diario creado: marcarActividadesVencidas() a las 8am');
+  return 'Trigger creado correctamente';
+}
+
 
 /**
  * Valida permisos de edición

@@ -682,7 +682,13 @@
               <option value="En Proceso">En Proceso</option>
               <option value="En Revisi&#xF3;n">En Revisi&#xF3;n</option>
               <option value="Completada">Completada</option>
+              <option value="Vencida" disabled>Vencida (autom&#xE1;tico)</option>
+              <option value="Completada con Atraso" disabled>Completada con Atraso (autom&#xE1;tico)</option>
+              <option value="Cancelada">Cancelada</option>
             </select>
+            <small style="color:var(--text-secondary);font-size:12px;">
+              Los estados "Vencida" y "Completada con Atraso" se asignan autom&#xE1;ticamente por el sistema.
+            </small>
           </div>
 
           <div class="form-group">
@@ -1230,10 +1236,40 @@
         const pagina = actividadesMostradas.slice(inicio, fin);
 
         tbody.innerHTML = pagina.map(function(act) {
-          const estadoClass = act.estado.toLowerCase().replace(/\s+/g, "-");
+          const estadoClass   = act.estado.toLowerCase().replace(/\s+/g, "-");
           const prioridadClass = act.prioridad.toLowerCase();
-          const fechaFin = act.fechaFin ? new Date(act.fechaFin).toLocaleDateString("es-ES") : '-';
-          const fechaInicio = act.fechaInicio ? new Date(act.fechaInicio).toLocaleDateString("es-ES") : '-';
+          const fechaFinDate  = act.fechaFin ? new Date(act.fechaFin) : null;
+          const fechaFin      = fechaFinDate ? fechaFinDate.toLocaleDateString("es-ES") : '-';
+          const fechaInicio   = act.fechaInicio ? new Date(act.fechaInicio).toLocaleDateString("es-ES") : '-';
+          const ahora         = new Date();
+
+          // ── Indicador de vencimiento ────────────────────
+          const estadosActivos = ['Pendiente', 'En Proceso', 'En Revisi\u00f3n'];
+          const estaActiva     = estadosActivos.includes(act.estado);
+          const diasRestantes  = fechaFinDate
+            ? Math.ceil((fechaFinDate - ahora) / (1000 * 60 * 60 * 24))
+            : null;
+
+          let alertaVencimiento = '';
+          let filaStyle         = '';
+
+          if (act.estado === 'Vencida') {
+            filaStyle         = ' style="background:rgba(241,98,77,0.08);border-left:3px solid #f1624d;"';
+            alertaVencimiento = ' <span title="Actividad vencida" style="color:#f1624d;font-size:13px;">&#x1F534;</span>';
+          } else if (act.estado === 'Completada con Atraso') {
+            filaStyle         = ' style="background:rgba(242,150,56,0.08);border-left:3px solid #f29638;"';
+            alertaVencimiento = ' <span title="Completada con atraso" style="color:#f29638;font-size:13px;">&#x26A0;&#xFE0F;</span>';
+          } else if (estaActiva && diasRestantes !== null && diasRestantes <= 2 && diasRestantes >= 0) {
+            alertaVencimiento = ' <span title="Vence en ' + diasRestantes + ' d\u00eda(s)" style="color:#f29638;font-size:13px;">&#x23F0;</span>';
+          }
+
+          // ── Fecha fin con color según urgencia ──────────
+          let fechaFinDisplay = fechaFin;
+          if (act.estado === 'Vencida') {
+            fechaFinDisplay = '<span style="color:#f1624d;font-weight:600;">' + fechaFin + '</span>';
+          } else if (estaActiva && diasRestantes !== null && diasRestantes <= 2 && diasRestantes >= 0) {
+            fechaFinDisplay = '<span style="color:#f29638;font-weight:600;">' + fechaFin + '</span>';
+          }
 
           const proyectoNombre = act.proyectoId && proyectosGlobal
             ? (proyectosGlobal.find(function(p) { return p.id === act.proyectoId; }) || {nombre:'-'}).nombre
@@ -1244,41 +1280,41 @@
           const responsableNombre = userEncontrado ? userEncontrado.nombre : (act.responsable ? act.responsable.split("@")[0] : '-');
 
           const tipoBadge = act.tipo === 'Urgente'
-            ? '<span class="badge-emergente" style="background:linear-gradient(135deg,#ff4c00,#ff6b2b);">🔥 URGENTE</span> '
-            : (act.tipo === 'Emergente' ? '<span class="badge-emergente">🚨 EMERGENTE</span> ' : '');
+            ? '<span class="badge-emergente" style="background:linear-gradient(135deg,#ff4c00,#ff6b2b);">&#x1F525; URGENTE</span> '
+            : (act.tipo === 'Emergente' ? '<span class="badge-emergente">&#x1F6A8; EMERGENTE</span> ' : '');
 
           const estadoBadge = act.estado === 'Suspendida'
-            ? '<span class="badge-suspendida">⏸️ SUSPENDIDA</span>'
+            ? '<span class="badge-suspendida">&#x23F8;&#xFE0F; SUSPENDIDA</span>'
             : '<span class="badge badge-' + estadoClass + '">' + act.estado + '</span>';
 
-          const avancePct = act.avance || 0;
+          const avancePct   = act.avance || 0;
           const avanceColor = avancePct === 100 ? 'var(--progress-complete)'
             : avancePct >= 70 ? 'var(--progress-success)'
             : avancePct >= 40 ? 'var(--progress-warning)'
             : 'var(--progress-danger)';
 
-          const cronBadge = (act.tipo === 'Emergente' && act.estado === 'En Ejecución')
+          const cronBadge = (act.tipo === 'Emergente' && act.estado === 'En Ejecuci\u00f3n')
             ? '<span class="cronometro-badge" data-cronometro="' + act.id + '">00:00:00</span>'
             : '';
 
-          const accionBtn = (act.tipo === 'Emergente' && act.estado === 'En Ejecución')
-            ? '<button class="btn-icon" style="background:#27ae60;color:white;padding:8px 16px;" onclick="completarEmergente(\'' + act.id + '\')" title="Completar">✅ Completar</button>'
-            : '<button class="btn-icon" onclick="editarActividad(\'' + act.id + '\')" title="Editar">✏️</button>';
+          const accionBtn = (act.tipo === 'Emergente' && act.estado === 'En Ejecuci\u00f3n')
+            ? '<button class="btn-icon" style="background:#27ae60;color:white;padding:8px 16px;" onclick="completarEmergente(\'' + act.id + '\')" title="Completar">&#x2705; Completar</button>'
+            : '<button class="btn-icon" onclick="editarActividad(\'' + act.id + '\')" title="Editar">&#x270F;&#xFE0F;</button>';
 
           const elimBtn = (usuarioActual && usuarioActual.rol !== "Colaborador")
-            ? '<button class="btn-icon" onclick="eliminarActividad(\'' + act.id + '\')" title="Eliminar">🗑️</button>'
+            ? '<button class="btn-icon" onclick="eliminarActividad(\'' + act.id + '\')" title="Eliminar">&#x1F5D1;&#xFE0F;</button>'
             : '';
 
-          return '<tr>'
-            + '<td>' + tipoBadge + '<strong>' + act.titulo + '</strong></td>'
+          return '<tr' + filaStyle + '>'
+            + '<td>' + tipoBadge + '<strong>' + act.titulo + '</strong>' + alertaVencimiento + '</td>'
             + '<td><small style="color:var(--text-secondary);">' + proyectoNombre + '</small></td>'
             + '<td>' + responsableNombre + '</td>'
             + '<td>' + estadoBadge + '</td>'
             + '<td><div class="progress-cell"><div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + avancePct + '%;background:' + avanceColor + '"></div></div><span class="progress-text">' + avancePct + '%</span></div></td>'
             + '<td><span class="badge-priority priority-' + prioridadClass + '">' + act.prioridad + '</span></td>'
             + '<td style="white-space:nowrap;">' + fechaInicio + '</td>'
-            + '<td style="white-space:nowrap;">' + fechaFin + '</td>'
-            + '<td>' + cronBadge + '<div class="actions-cell"><button class="btn-icon" onclick="verDetalle(\'' + act.id + '\')" title="Ver detalle">👁️</button>' + accionBtn + elimBtn + '</div></td>'
+            + '<td style="white-space:nowrap;">' + fechaFinDisplay + '</td>'
+            + '<td>' + cronBadge + '<div class="actions-cell"><button class="btn-icon" onclick="verDetalle(\'' + act.id + '\')" title="Ver detalle">&#x1F441;&#xFE0F;</button>' + accionBtn + elimBtn + '</div></td>'
             + '</tr>';
         }).join("");
 
