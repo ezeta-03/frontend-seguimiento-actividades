@@ -42,36 +42,33 @@
   <div class="container">
     <!-- STATS -->
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-label">Total Actividades</span>
-          <span class="stat-icon">&#x1F4CA;</span>
+      <div class="stat-card" onclick="filtrarPorStat('')" title="Ver todas">
+        <span class="stat-icon">📊</span>
+        <div>
+          <div class="stat-label">Total</div>
+          <div class="stat-value" id="statTotal">0</div>
         </div>
-        <div class="stat-value" id="statTotal">0</div>
       </div>
-
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-label">Pendientes</span>
-          <span class="stat-icon">&#x23F3;</span>
+      <div class="stat-card" onclick="filtrarPorStat('Pendiente')" title="Filtrar pendientes">
+        <span class="stat-icon">⏳</span>
+        <div>
+          <div class="stat-label">Pendientes</div>
+          <div class="stat-value" id="statPendientes">0</div>
         </div>
-        <div class="stat-value" id="statPendientes">0</div>
       </div>
-
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-label">En Proceso</span>
-          <span class="stat-icon">&#x2699;&#xFE0F;</span>
+      <div class="stat-card" onclick="filtrarPorStat('En Proceso')" title="Filtrar en proceso">
+        <span class="stat-icon">⚙️</span>
+        <div>
+          <div class="stat-label">En Proceso</div>
+          <div class="stat-value" id="statProceso">0</div>
         </div>
-        <div class="stat-value" id="statProceso">0</div>
       </div>
-
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-label">Completadas</span>
-          <span class="stat-icon">&#x2705;</span>
+      <div class="stat-card" onclick="filtrarPorStat('Completada')" title="Filtrar completadas">
+        <span class="stat-icon">✅</span>
+        <div>
+          <div class="stat-label">Completadas</div>
+          <div class="stat-value" id="statCompletadas">0</div>
         </div>
-        <div class="stat-value" id="statCompletadas">0</div>
       </div>
     </div>
 
@@ -1279,8 +1276,12 @@
         tbody.innerHTML = pagina.map(function(act) {
           const prioridadClass = act.prioridad.toLowerCase();
           const fechaFinDate  = act.fechaFin ? new Date(act.fechaFin) : null;
-          const fechaFin      = fechaFinDate ? fechaFinDate.toLocaleDateString("es-ES") : '-';
-          const fechaInicio   = act.fechaInicio ? new Date(act.fechaInicio).toLocaleDateString("es-ES") : '-';
+          const fechaFin      = fechaFinDate
+            ? fechaFinDate.toLocaleDateString("es-ES") + ' ' + fechaFinDate.toLocaleTimeString("es-ES", {hour:'2-digit',minute:'2-digit'})
+            : '-';
+          const fechaInicio   = act.fechaInicio
+            ? (function(d){ return d.toLocaleDateString("es-ES") + ' ' + d.toLocaleTimeString("es-ES", {hour:'2-digit',minute:'2-digit'}); })(new Date(act.fechaInicio))
+            : '-';
           const ahora         = new Date();
 
           // ── Indicador de vencimiento ────────────────────
@@ -1350,7 +1351,7 @@
             : '';
 
           const accionBtn = (act.tipo === 'Emergente' && act.estado === 'En Ejecuci\u00f3n')
-            ? '<button class="btn-icon" style="background:#27ae60;color:white;padding:8px 16px;" onclick="completarEmergente(\'' + act.id + '\')" title="Completar">&#x2705; Completar</button>'
+            ? '<button class="btn-completar-emergente" onclick="completarEmergente(\'' + act.id + '\')" title="Completar">&#x2705; Completar</button>'
             : '<button class="btn-icon" onclick="editarActividad(\'' + act.id + '\')" title="Editar">&#x270F;&#xFE0F;</button>';
 
           const elimBtn = (usuarioActual && usuarioActual.rol !== "Colaborador")
@@ -1448,12 +1449,29 @@
 
       function actualizarEstadisticas(actividades) {
         document.getElementById("statTotal").textContent = actividades.length;
-        const pendientes = actividades.filter(function(a) { return a.estado === "Pendiente"; }).length;
-        const proceso = actividades.filter(function(a) { return a.estado === "En Proceso"; }).length;
-        const completadas = actividades.filter(function(a) { return a.estado === "Completada"; }).length;
-        document.getElementById("statPendientes").textContent = pendientes;
-        document.getElementById("statProceso").textContent = proceso;
+        const pendientes  = actividades.filter(function(a) { return a.estado === "Pendiente"; }).length;
+        const proceso     = actividades.filter(function(a) { return a.estado === "En Proceso"; }).length;
+        const completadas = actividades.filter(function(a) { return a.estado === "Completada" || a.estado === "Completada con Atraso"; }).length;
+        document.getElementById("statPendientes").textContent  = pendientes;
+        document.getElementById("statProceso").textContent     = proceso;
         document.getElementById("statCompletadas").textContent = completadas;
+      }
+
+      function filtrarPorStat(estado) {
+        // Si ya está activo ese filtro, limpiar
+        var select = document.getElementById('filterEstado');
+        if (select.value === estado) {
+          select.value = '';
+        } else {
+          select.value = estado;
+        }
+        // Resaltar card activa
+        document.querySelectorAll('.stat-card').forEach(function(c) { c.classList.remove('stat-activo'); });
+        if (select.value) {
+          var idx = {'':'0','Pendiente':'1','En Proceso':'2','Completada':'3'}[estado];
+          if (idx) document.querySelectorAll('.stat-card')[parseInt(idx)].classList.add('stat-activo');
+        }
+        filtrarActividades();
       }
 
       function filtrarActividades() {

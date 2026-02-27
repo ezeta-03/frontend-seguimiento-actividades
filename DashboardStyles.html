@@ -159,52 +159,69 @@
   /* ══════════════════════════════════════════════════════════
      STATS
   ══════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════
+     STATS — barra horizontal compacta en lugar de cards grandes
+  ══════════════════════════════════════════════════════════ */
   .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
   }
 
   .stat-card {
     background: var(--surface);
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 2px 8px var(--shadow);
-    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 10px 18px;
+    box-shadow: 0 1px 4px var(--shadow);
     border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 130px;
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
 
-  .stat-card:hover { transform: translateY(-4px); }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow);
+    border-color: var(--primary);
+  }
+
+  .stat-card.stat-activo {
+    border-color: var(--primary);
+    background: rgba(255,76,0,.06);
+  }
 
   .stat-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    gap: 6px;
   }
 
   .stat-label {
-    font-size: 13px;
+    font-size: 11px;
     color: var(--text-secondary);
-    opacity: 0.7;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
   }
 
-  .stat-icon { font-size: 24px; opacity: 0.6; }
+  .stat-icon { font-size: 16px; opacity: 0.7; }
 
   .stat-value {
-    font-size: 32px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--primary);
+    line-height: 1;
   }
 
   .stat-card:nth-child(1) .stat-value { color: var(--stat-1); }
-  .stat-card:nth-child(2) .stat-value { color: var(--stat-2); }
-  .stat-card:nth-child(3) .stat-value { color: var(--stat-3); }
-  .stat-card:nth-child(4) .stat-value { color: var(--stat-4); }
-  .stat-card:nth-child(5) .stat-value { color: var(--stat-5); }
+  .stat-card:nth-child(2) .stat-value { color: var(--stat-4); }
+  .stat-card:nth-child(3) .stat-value { color: var(--stat-2); }
+  .stat-card:nth-child(4) .stat-value { color: var(--stat-3); }
 
   /* ══════════════════════════════════════════════════════════
      ACTIONS BAR & FILTROS
@@ -260,42 +277,78 @@
     background: var(--surface);
     border-radius: 12px;
     box-shadow: 0 2px 8px var(--shadow);
-    overflow: hidden;
     border: 1px solid var(--border);
+    overflow-x: auto;   /* scroll horizontal siempre disponible */
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
   }
 
-  table { width: 100%; border-collapse: collapse; }
+  /* La tabla NO se encoge — mantiene anchos fijos */
+  table {
+    width: 100%;
+    min-width: 900px;   /* evita que las columnas se apilen */
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  /* Anchos de columna fijos */
+  table colgroup col:nth-child(1) { width: 22%; }  /* Título */
+  table colgroup col:nth-child(2) { width: 11%; }  /* Proyecto */
+  table colgroup col:nth-child(3) { width: 10%; }  /* Responsable */
+  table colgroup col:nth-child(4) { width: 10%; }  /* Estado */
+  table colgroup col:nth-child(5) { width: 9%;  }  /* Avance */
+  table colgroup col:nth-child(6) { width: 8%;  }  /* Prioridad */
+  table colgroup col:nth-child(7) { width: 12%; }  /* F.Inicio */
+  table colgroup col:nth-child(8) { width: 12%; }  /* F.Fin */
+  table colgroup col:nth-child(9) { width: 6%;  }  /* Acciones */
 
   th {
-    padding: 15px;
+    padding: 10px 10px;
     text-align: left;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     background: var(--surface-alt);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   td {
-    padding: 15px;
+    padding: 9px 10px;
     border-bottom: 1px solid var(--border);
     color: var(--text);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+
+  /* Columna título puede hacer wrap */
+  td:first-child { white-space: normal; word-break: break-word; }
 
   tbody tr { transition: background 0.2s ease; }
   tbody tr:hover { background: var(--surface-alt); }
 
-  .actions-cell { display: flex; gap: 8px; }
+  .actions-cell {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
 
   .btn-icon {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 18px;
-    padding: 5px;
+    font-size: 15px;
+    padding: 4px 5px;
     border-radius: 6px;
     transition: all 0.2s ease;
     color: var(--text);
+    flex-shrink: 0;
+    line-height: 1;
   }
 
   .btn-icon:hover {
@@ -303,15 +356,36 @@
     transform: scale(1.1);
   }
 
+  /* Botón completar emergente — compacto para caber en la celda */
+  .btn-completar-emergente {
+    background: #27ae60;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background .2s;
+  }
+  .btn-completar-emergente:hover { background: #219a52; }
+
   /* ══════════════════════════════════════════════════════════
      BADGES
   ══════════════════════════════════════════════════════════ */
   .badge {
     display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
+    padding: 3px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
   }
 
   /* Estados de actividad */
@@ -889,41 +963,40 @@
   /* Desktop Large (1400px+) */
   @media (min-width: 1400px) {
     .container { max-width: 1600px; }
-    .stats-grid { grid-template-columns: repeat(5, 1fr); }
+    .stats-grid { gap: 14px; }
+    .stat-card { min-width: 150px; }
   }
 
   /* Tablet Landscape (768px - 1023px) */
   @media (min-width: 768px) and (max-width: 1023px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .container { padding: 20px 15px; }
     .logo-text { font-size: 16px; }
-    .stat-value { font-size: 28px; }
-    table { font-size: 13px; }
-    th, td { padding: 12px; }
+    .stat-value { font-size: 20px; }
+    .stat-card { min-width: 110px; padding: 8px 12px; }
+    table { font-size: 11px; }
+    th, td { padding: 8px; }
   }
 
-  /* Mobile Large (480px - 599px) */
-  @media (min-width: 480px) and (max-width: 599px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    .header-content { height: 56px; }
-    .logo-icon { height: 24px; }
-    .logo-text { font-size: 14px; }
+  /* Mobile Large (480px - 767px) */
+  @media (max-width: 767px) {
+    .stats-grid { gap: 6px; }
+    .stat-card { min-width: 90px; padding: 7px 10px; }
+    .stat-value { font-size: 18px; }
+    .stat-label { font-size: 9px; }
+    .header-content { height: 52px; }
     .user-info { display: none; }
-    .stat-card { padding: 16px; }
-    .stat-value { font-size: 24px; }
-    .table-container { overflow-x: auto; }
-    table { min-width: 600px; font-size: 11px; }
+    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 700px; font-size: 11px; }
+    th, td { padding: 7px 8px; }
     .theme-toggle { width: 48px; height: 48px; bottom: 20px; right: 20px; }
   }
 
   /* Mobile Small (< 480px) */
   @media (max-width: 479px) {
     .header { padding: 0 12px; }
-    .logo-icon { height: 22px; }
     .logo-text { font-size: 12px; }
     .logo-separator, .logo-brand { display: none; }
-    .user-info { display: none; }
-    .stat-value { font-size: 22px; }
+    .stat-value { font-size: 16px; }
     .theme-toggle { width: 44px; height: 44px; bottom: 16px; right: 16px; }
   }
 </style>
