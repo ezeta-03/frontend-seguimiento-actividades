@@ -464,20 +464,17 @@ function crearActividad(datos) {
     Logger.log('ColaboradoresAdicionales: '+ colaboradoresAdicionales.join(','));
 
     const ahora = new Date();
-if (usuario.rol === "Jefatura" || usuario.rol === "Colaborador") {
-  const ini = datos.fechaInicio ? new Date(datos.fechaInicio) : null;
-  const fin = datos.fechaFin ? new Date(datos.fechaFin) : null;
-  if (ini && fin) {
-    const cruce = verificarCruceYSugerencias(datos.responsable, ini, fin, null);
-    if (cruce.cruce)
-      return {
-        success: false,
-        cruce: true,
-        actividad: cruce.actividad,
-        horasLibres: cruce.horasLibres,
-      };
-  }
-}
+
+      if (usuario.rol === 'Jefatura' || usuario.rol === 'Colaborador') {
+   const ini    = datos.fechaInicio ? new Date(datos.fechaInicio) : null;
+   const fin    = datos.fechaFin    ? new Date(datos.fechaFin)    : null;
+   if (ini && fin) {
+     const cruce = verificarCruceYSugerencias(datos.responsable, ini, fin, null);
+     if (cruce.cruce) return { success: false, cruce: true, actividad: cruce.actividad, horasLibres: cruce.horasLibres };
+   }
+ }
+
+
     sheet.appendRow([
       id,                                            // A  ID
       datos.proyectoId  || '',                       // B  ProyectoID
@@ -504,6 +501,7 @@ if (usuario.rol === "Jefatura" || usuario.rol === "Colaborador") {
 
     try { registrarHistorial(id, usuario.email, 'Creación', 'Actividad creada'); } catch(e){ Logger.log('Error historial: ' + e); }
     try { enviarNotificacionNuevaActividad({ ...datos, id }); }                    catch(e){ Logger.log('Error notif: '     + e); }
+    try { crearEventoCalendario({ ...datos, id, estado: CONFIG.ESTADOS.PENDIENTE }); } catch(e){ Logger.log('Error calendario: ' + e); }
 
     return {
       success: true,
@@ -717,29 +715,15 @@ function actualizarActividad(id, cambios) {
     const fechaFin     = fila[10] ? new Date(fila[10]) : null;
     const ahora        = new Date();
 
-if (usuario.rol === "Jefatura" || usuario.rol === "Colaborador") {
-  const ini = cambios.fechaInicio
-    ? new Date(cambios.fechaInicio)
-    : fechaInicio
-      ? new Date(fechaInicio)
-      : null;
-  const fin = cambios.fechaFin
-    ? new Date(cambios.fechaFin)
-    : fechaFin
-      ? new Date(fechaFin)
-      : null;
-  const resp = cambios.responsable || fila[4];
-  if (ini && fin) {
-    const cruce = verificarCruceYSugerencias(resp, ini, fin, id);
-    if (cruce.cruce)
-      return {
-        success: false,
-        cruce: true,
-        actividad: cruce.actividad,
-        horasLibres: cruce.horasLibres,
-      };
-  }
-}
+  if (usuario.rol === 'Jefatura' || usuario.rol === 'Colaborador') {
+    const ini = cambios.fechaInicio ? new Date(cambios.fechaInicio) : fila[9] ? new Date(fila[9]) : null;
+    const fin = cambios.fechaFin    ? new Date(cambios.fechaFin)    : fila[10] ? new Date(fila[10]) : null;
+   const resp = cambios.responsable || fila[4];
+   if (ini && fin) {
+     const cruce = verificarCruceYSugerencias(resp, ini, fin, id);
+     if (cruce.cruce) return { success: false, cruce: true, actividad: cruce.actividad, horasLibres: cruce.horasLibres };
+   }
+ }
 
     // ── Reactivar Vencida si se extiende la fecha ────────
     if (estadoActual === 'Vencida' && cambios.fechaFin) {
@@ -1163,23 +1147,49 @@ function obtenerComentarios(actividadId) {
  * Crea evento en Google Calendar
  */
 function crearEventoCalendario(actividad) {
-  const calendario = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
-
-  const evento = calendario.createEvent(
-    actividad.titulo,
-    actividad.fechaInicio,
-    actividad.fechaFin,
-    {
-      description: `${actividad.descripcion}\n\nResponsable: ${actividad.responsable}\nEstado: ${actividad.estado}\nPrioridad: ${actividad.prioridad}\n\nID: ${actividad.id}`,
-      location: ''
+  try {
+    if (!CONFIG.CALENDAR_ID) {
+      Logger.log('CALENDAR_ID no configurado — saltando creación de evento');
+      return null;
     }
-  );
 
-  // Agregar recordatorios
-  evento.addEmailReminder(60); // 1 hora antes
-  evento.addPopupReminder(30); // 30 minutos antes
+    const calendario = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+    if (!calendario) {
+      Logger.log('Calendario no encontrado: ' + CONFIG.CALENDAR_ID);
+      return null;
+    }
 
-  return evento.getId();
+    // Convertir strings a Date
+    const fechaIni = new Date(actividad.fechaInicio);
+    const fechaFin = new Date(actividad.fechaFin);
+
+    if (isNaN(fechaIni) || isNaN(fechaFin)) {
+      Logger.log('Fechas inválidas para calendario: ' + actividad.fechaInicio + ' / ' + actividad.fechaFin);
+      return null;
+    }
+
+    const evento = calendario.createEvent(
+      actividad.titulo,
+      fechaIni,
+      fechaFin,
+      {
+        description: (actividad.descripcion || '') +
+          '\n\nResponsable: ' + actividad.responsable +
+          '\nEstado: '        + (actividad.estado || 'Pendiente') +
+          '\nPrioridad: '     + actividad.prioridad +
+          '\n\nID: '          + actividad.id
+      }
+    );
+
+    evento.addEmailReminder(60);
+    evento.addPopupReminder(30);
+
+    return evento.getId();
+
+  } catch(e) {
+    Logger.log('Error en crearEventoCalendario: ' + e);
+    return null;
+  }
 }
 
 /**
@@ -1334,30 +1344,33 @@ function exportarTodasAlCalendario() {
  * Envía notificación de nueva actividad
  */
 function enviarNotificacionNuevaActividad(actividad) {
-  const destinatarios = [actividad.responsable];
+  try {
+    const destinatarios = [actividad.responsable];
+    if (actividad.jefe)    destinatarios.push(actividad.jefe);
+    if (actividad.gerente) destinatarios.push(actividad.gerente);
 
-  if (actividad.jefe) destinatarios.push(actividad.jefe);
-  if (actividad.gerente) destinatarios.push(actividad.gerente);
+    // Convertir strings a Date para Utilities.formatDate
+    const fechaIni = actividad.fechaInicio ? new Date(actividad.fechaInicio) : null;
+    const fechaFin = actividad.fechaFin    ? new Date(actividad.fechaFin)    : null;
 
-  const asunto = `Nueva actividad asignada: ${actividad.titulo}`;
-  const cuerpo = `
-    <h2>Nueva Actividad Asignada</h2>
-    <p><strong>Título:</strong> ${actividad.titulo}</p>
-    <p><strong>Descripción:</strong> ${actividad.descripcion}</p>
-    <p><strong>Responsable:</strong> ${actividad.responsable}</p>
-    <p><strong>Prioridad:</strong> ${actividad.prioridad}</p>
-    <p><strong>Fecha inicio:</strong> ${Utilities.formatDate(actividad.fechaInicio, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')}</p>
-    <p><strong>Fecha fin:</strong> ${Utilities.formatDate(actividad.fechaFin, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')}</p>
-    <p><strong>Estado:</strong> ${actividad.estado}</p>
-  `;
+    const asunto = 'Nueva actividad asignada: ' + actividad.titulo;
+    const cuerpo = '<h2>Nueva Actividad Asignada</h2>' +
+      '<p><strong>Título:</strong> '       + actividad.titulo       + '</p>' +
+      '<p><strong>Descripción:</strong> '  + (actividad.descripcion || '-') + '</p>' +
+      '<p><strong>Responsable:</strong> '  + actividad.responsable  + '</p>' +
+      '<p><strong>Prioridad:</strong> '    + actividad.prioridad    + '</p>' +
+      '<p><strong>Fecha inicio:</strong> ' + (fechaIni ? Utilities.formatDate(fechaIni, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') : '-') + '</p>' +
+      '<p><strong>Fecha fin:</strong> '    + (fechaFin ? Utilities.formatDate(fechaFin, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') : '-') + '</p>' +
+      '<p><strong>Estado:</strong> '       + (actividad.estado || 'Pendiente') + '</p>';
 
-  destinatarios.forEach(email => {
-    MailApp.sendEmail({
-      to: email,
-      subject: asunto,
-      htmlBody: cuerpo
+    destinatarios.forEach(function(email) {
+      if (!email) return;
+      MailApp.sendEmail({ to: email, subject: asunto, htmlBody: cuerpo });
     });
-  });
+
+  } catch(e) {
+    Logger.log('Error en enviarNotificacionNuevaActividad: ' + e);
+  }
 }
 
 /**
@@ -3476,22 +3489,24 @@ function verificarCruceYSugerencias(responsableEmail, nuevaInicio, nuevaFin, exc
         .map(function(b) { return { ini: b.ini, fin: b.fin }; })
         .sort(function(a, b) { return a.ini - b.ini; });
 
-      // Generar slots libres del día (00:00 a 23:59)
-      const inicioDia = new Date(diaActual); inicioDia.setHours(0, 0, 0, 0);
-      const finDia    = new Date(diaActual); finDia.setHours(23, 59, 59, 0);
+      // Horario laboral: 08:00 – 20:00
+      const inicioDia = new Date(diaActual); inicioDia.setHours(8, 0, 0, 0);
+      const finDia    = new Date(diaActual); finDia.setHours(20, 0, 0, 0);
 
       const slotsDelDia = [];
       let cursor = new Date(inicioDia);
+      const ahora = new Date(); // hora actual para filtrar slots pasados
 
       bloquesDelDia.forEach(function(b) {
         const bIni = b.ini < inicioDia ? inicioDia : b.ini;
         const bFin = b.fin > finDia    ? finDia    : b.fin;
 
         if (cursor < bIni) {
-          const gapMs = bIni - cursor;
+          const slotIni = cursor < ahora ? ahora : cursor; // no sugerir en el pasado
+          const gapMs   = bIni - slotIni;
           if (gapMs >= duracionMs) {
-            const slotFin = new Date(cursor.getTime() + duracionMs);
-            slotsDelDia.push(formatSlot(diaActual, cursor, slotFin));
+            const slotFin = new Date(slotIni.getTime() + duracionMs);
+            slotsDelDia.push(formatSlot(diaActual, slotIni, slotFin));
           }
         }
         if (bFin > cursor) cursor = new Date(bFin);
@@ -3499,17 +3514,22 @@ function verificarCruceYSugerencias(responsableEmail, nuevaInicio, nuevaFin, exc
 
       // Gap al final del día
       if (cursor < finDia) {
-        const gapMs = finDia - cursor;
+        const slotIni = cursor < ahora ? ahora : cursor;
+        const gapMs   = finDia - slotIni;
         if (gapMs >= duracionMs) {
-          const slotFin = new Date(cursor.getTime() + duracionMs);
-          slotsDelDia.push(formatSlot(diaActual, cursor, slotFin));
+          const slotFin = new Date(slotIni.getTime() + duracionMs);
+          slotsDelDia.push(formatSlot(diaActual, slotIni, slotFin));
         }
       }
 
-      // Si no hay bloques ese día, todo el día es libre
+      // Si no hay bloques ese día, todo el horario laboral es libre
       if (bloquesDelDia.length === 0) {
-        const slotFin = new Date(inicioDia.getTime() + duracionMs);
-        slotsDelDia.push(formatSlot(diaActual, inicioDia, slotFin));
+        const slotIni = inicioDia < ahora ? ahora : inicioDia;
+        const gapMs   = finDia - slotIni;
+        if (gapMs >= duracionMs) {
+          const slotFin = new Date(slotIni.getTime() + duracionMs);
+          slotsDelDia.push(formatSlot(diaActual, slotIni, slotFin));
+        }
       }
 
       if (slotsDelDia.length > 0) {
@@ -3544,4 +3564,3 @@ function formatSlot(dia, ini, fin) {
     fechaFin:    fin.toISOString()
   };
 }
-

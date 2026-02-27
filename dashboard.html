@@ -1499,6 +1499,10 @@
 
 
       function abrirModalNuevaActividad() {
+        // Limpiar aviso de cruce anterior
+        var avisoPrevio = document.getElementById('avisoCruce');
+        if (avisoPrevio) avisoPrevio.remove();
+
         if (!datosListos) {
           alert("Espera un momento, los datos aún se están cargando...");
           return;
@@ -1713,6 +1717,10 @@
         if (!actividad) { alert('Actividad no encontrada'); return; }
 
         function abrirFormEditar() {
+          // Limpiar aviso de cruce anterior
+          var avisoPrevio = document.getElementById('avisoCruce');
+          if (avisoPrevio) avisoPrevio.remove();
+
           // Llenar formulario
           document.getElementById('editarId').value          = actividad.id;
           document.getElementById('editarTitulo').value      = actividad.titulo;
@@ -1835,28 +1843,71 @@
         var slot  = slots[index];
         if (!slot) return;
 
-        var ini = slot.getAttribute('data-inicio');
-        var fin = slot.getAttribute('data-fin');
+        // Resaltar seleccionado
+        slots.forEach(function(s) { s.classList.remove('slot-seleccionado'); });
+        slot.classList.add('slot-seleccionado');
+
+        var ini = new Date(slot.getAttribute('data-inicio'));
+        var fin = new Date(slot.getAttribute('data-fin'));
+
+        // Mostrar ajustador de hora debajo de los slots
+        var ajustador = document.getElementById('slotAjustador');
+        if (!ajustador) {
+          ajustador = document.createElement('div');
+          ajustador.id = 'slotAjustador';
+          document.getElementById('avisoCruce').querySelector('div').appendChild(ajustador);
+        }
+
+        ajustador.innerHTML =
+          '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(241,98,77,.3);">' +
+            '<p style="font-size:12px;color:var(--text-secondary);margin:0 0 8px;">&#x270F;&#xFE0F; Ajusta el horario si lo prefieres:</p>' +
+            '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
+              '<div>' +
+                '<label style="font-size:11px;opacity:.7;display:block;margin-bottom:3px;">Inicio</label>' +
+                '<input type="datetime-local" id="slotIniAjuste" class="form-control" style="font-size:13px;padding:6px 10px;width:auto;" />' +
+              '</div>' +
+              '<div>' +
+                '<label style="font-size:11px;opacity:.7;display:block;margin-bottom:3px;">Fin</label>' +
+                '<input type="datetime-local" id="slotFinAjuste" class="form-control" style="font-size:13px;padding:6px 10px;width:auto;" />' +
+              '</div>' +
+              '<button type="button" class="btn" style="background:var(--primary);color:#fff;margin-top:16px;padding:7px 18px;" ' +
+                'onclick="confirmarSlot(\'' + contexto + '\')">' +
+                '&#x2705; Aplicar este horario' +
+              '</button>' +
+            '</div>' +
+          '</div>';
+
+        // Precargar los valores del slot usando el mismo formateador que los otros inputs
+        var iniDate = new Date(slot.getAttribute('data-inicio'));
+        var finDate = new Date(slot.getAttribute('data-fin'));
+        document.getElementById('slotIniAjuste').value = formatearFechaParaInput(iniDate);
+        document.getElementById('slotFinAjuste').value = formatearFechaParaInput(finDate);
+      }
+
+      function confirmarSlot(contexto) {
+        var ini = document.getElementById('slotIniAjuste').value;
+        var fin = document.getElementById('slotFinAjuste').value;
+
+        if (!ini || !fin) { alert('Selecciona inicio y fin'); return; }
+        if (new Date(ini) >= new Date(fin)) { alert('El inicio debe ser anterior al fin'); return; }
 
         if (contexto === 'nueva') {
           var fi = document.getElementById('fechaInicio');
           var ff = document.getElementById('fechaFin');
-          if (fi) fi.value = formatearFechaParaInput(new Date(ini));
-          if (ff) ff.value = formatearFechaParaInput(new Date(fin));
+          if (fi) fi.value = ini;
+          if (ff) ff.value = fin;
         } else {
           var fi2 = document.getElementById('editarFechaInicio');
           var ff2 = document.getElementById('editarFechaFin');
-          if (fi2) fi2.value = formatearFechaParaInput(new Date(ini));
-          if (ff2) ff2.value = formatearFechaParaInput(new Date(fin));
+          if (fi2) fi2.value = ini;
+          if (ff2) ff2.value = fin;
         }
 
-        // Resaltar slot seleccionado
-        slots.forEach(function(s) { s.style.background = ''; s.style.color = ''; });
-        slot.style.background = 'var(--primary)';
-        slot.style.color      = '#fff';
+        // Limpiar aviso — el usuario ya eligió
+        var aviso = document.getElementById('avisoCruce');
+        if (aviso) aviso.remove();
 
-        // Notificación
-        mostrarNotificacionTemporal('Horario actualizado \u2014 revisa y guarda', 3000);
+        mostrarNotificacionTemporal('Horario aplicado \u2014 revisa y guarda', 3000);
       }
 
       function guardarEdicionActividad() {
