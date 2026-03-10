@@ -173,33 +173,26 @@
       </div>
     </div>
 
-    <!-- TABLE (desktop) -->
+    <!-- TABLE (desktop) — CSS Grid para altura de fila absolutamente fija -->
     <div class="table-container" id="vistaTabla">
-      <table>
-        <thead>
-          <tr>
-            <th class="sortable" onclick="ordenarPor('titulo')">T&#xED;tulo <span id="sort-titulo">&#x21C5;</span></th>
-            <th class="sortable" onclick="ordenarPor('proyecto')">Proyecto <span id="sort-proyecto">&#x21C5;</span></th>
-            <th class="sortable" onclick="ordenarPor('responsable')">Responsable <span id="sort-responsable">&#x21C5;</span></th>
-            <th class="sortable" onclick="ordenarPor('estado')">Estado <span id="sort-estado">&#x21C5;</span></th>
-            <th class="sortable" onclick="ordenarPor('avance')">Avance <span id="sort-avance">&#x21C5;</span></th>
-            <th class="sortable" onclick="ordenarPor('prioridad')">Prioridad <span id="sort-prioridad">&#x21C5;</span></th>
-            <th class="sortable" onclick="ordenarPor('fechaInicio')">F. Inicio <span id="sort-fechaInicio">&#x21C5;</span></th>
-            <th class="sortable" onclick="ordenarPor('fechaFin')">F. Fin <span id="sort-fechaFin">&#x21C5;</span></th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="actividadesTable">
-          <tr>
-            <td colspan="9">
-              <div class="empty-state">
-                <div class="empty-icon">&#x1F4ED;</div>
-                <p>Cargando actividades...</p>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="gtable">
+        <!-- Header -->
+        <div class="gtable-head">
+          <div class="gcol gcol-titulo sortable" onclick="ordenarPor('titulo')">T&#xED;tulo <span id="sort-titulo">&#x21C5;</span></div>
+          <div class="gcol gcol-proyecto sortable" onclick="ordenarPor('proyecto')">Proyecto <span id="sort-proyecto">&#x21C5;</span></div>
+          <div class="gcol gcol-resp sortable" onclick="ordenarPor('responsable')">Responsable <span id="sort-responsable">&#x21C5;</span></div>
+          <div class="gcol gcol-estado sortable" onclick="ordenarPor('estado')">Estado <span id="sort-estado">&#x21C5;</span></div>
+          <div class="gcol gcol-avance sortable" onclick="ordenarPor('avance')">Avance <span id="sort-avance">&#x21C5;</span></div>
+          <div class="gcol gcol-prio sortable" onclick="ordenarPor('prioridad')">Prioridad <span id="sort-prioridad">&#x21C5;</span></div>
+          <div class="gcol gcol-fi sortable" onclick="ordenarPor('fechaInicio')">F. Inicio <span id="sort-fechaInicio">&#x21C5;</span></div>
+          <div class="gcol gcol-ff sortable" onclick="ordenarPor('fechaFin')">F. Fin <span id="sort-fechaFin">&#x21C5;</span></div>
+          <div class="gcol gcol-acc">Acciones</div>
+        </div>
+        <!-- Body: filas generadas por JS -->
+        <div id="actividadesTable">
+          <div class="gtable-loading">&#x1F4ED; Cargando actividades...</div>
+        </div>
+      </div>
     </div>
 
     <!-- CARDS (mobile) -->
@@ -215,7 +208,7 @@
 
     <!-- MODAL DETALLE CARD (mobile) -->
     <div class="modal" id="modalDetalleCard">
-      <div class="modal-content" style="max-width:480px;">
+      <div class="modal-content" style="max-width:480px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;">
         <div class="modal-header" id="modalDetalleCardHeader">
           <h2 class="modal-title" id="modalDetalleCardTitulo">Detalle</h2>
           <button class="btn-close" onclick="cerrarModal('modalDetalleCard')">&#xD7;</button>
@@ -346,15 +339,11 @@
 
             <div class="form-group">
               <label class="form-label">Colaboradores Asignados</label>
-              <div id="colaboradoresCheckboxes" style="
-                    max-height: 200px;
-                    overflow-y: auto;
-                    border: 1px solid var(--border);
-                    padding: 10px;
-                    border-radius: 6px;
-                  ">
-                <!-- Se llena din&#xE1;micamente -->
-              </div>
+              <button type="button" class="btn w-100" style="background:var(--surface-alt);border:1px solid var(--border);color:var(--text);text-align:left;padding:10px 14px;border-radius:8px;" onclick="abrirModalColabProyecto()">
+                &#x1F464; <span id="colabProyectoCount">Ninguno seleccionado</span> &#x276F;
+              </button>
+              <!-- checkboxes ocultos, mismo ID para que el JS existente funcione -->
+              <div id="colaboradoresCheckboxes" style="display:none;"></div>
             </div>
 
             <div class="form-group">
@@ -398,27 +387,33 @@
                 />
             </div>
           </div>
-          <div class="modal-footer">
-            <button
-                type="button"
-                class="btn btn-secondary"
-                onclick="cerrarModal('modalNuevoProyecto')"
-              >
-                Cancelar
-              </button>
-            <button
-                type="button"
-                class="btn btn-success"
-                onclick="crearProyecto()"
-              >
-                Crear Proyecto
-              </button>
-          </div>
         </form>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalNuevoProyecto')">Cancelar</button>
+          <button type="button" class="btn btn-success" onclick="crearProyecto()">Crear Proyecto</button>
+        </div>
       </div>
     </div>
 
-    <!-- MODAL DETALLE PROYECTO -->
+    <!-- MODAL SECUNDARIO: Colaboradores Nuevo Proyecto -->
+<div class="modal" id="modalColabProyecto" style="z-index:1100;">
+  <div class="modal-content" style="max-width:460px;">
+    <div class="modal-header">
+      <h2 class="modal-title">&#x1F464; Colaboradores Asignados</h2>
+      <button class="btn-close" onclick="cerrarModalColabProyecto()">&#xD7;</button>
+    </div>
+    <div class="modal-body">
+      <div id="colaboradoresCheckboxesModal" style="display:flex;flex-direction:column;gap:8px;">
+        <!-- Se llena dinámicamente -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-success" onclick="cerrarModalColabProyecto()">&#x2714; Confirmar Selecci&#xF3;n</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE PROYECTO -->
     <div class="modal" id="modalDetalleProyecto">
       <div class="modal-content" style="max-width: 800px">
         <div class="modal-header">
@@ -524,11 +519,11 @@
             <input type="number" class="form-control" id="editarProyectoPresupuesto" step="0.01" min="0" />
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEditarProyecto')">Cancelar</button>
-          <button type="button" class="btn btn-success" onclick="guardarEdicionProyecto()">&#x1F4BE; Guardar Cambios</button>
-        </div>
       </form>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEditarProyecto')">Cancelar</button>
+        <button type="button" class="btn btn-success" onclick="guardarEdicionProyecto()">&#x1F4BE; Guardar Cambios</button>
+      </div>
     </div>
   </div>
 
@@ -626,23 +621,23 @@
               />
           </div>
         </div>
-        <div class="modal-footer">
-          <button
-              type="button"
-              class="btn btn-secondary"
-              onclick="cerrarModal('modalNuevaActividad')"
-            >
-              Cancelar
-            </button>
-          <button
-              type="button"
-              class="btn btn-success"
-              onclick="crearActividad()"
-            >
-              Crear Actividad
-            </button>
-        </div>
       </form>
+      <div class="modal-footer">
+        <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="cerrarModal('modalNuevaActividad')"
+          >
+            Cancelar
+          </button>
+        <button
+            type="button"
+            class="btn btn-success"
+            onclick="crearActividad()"
+          >
+            Crear Actividad
+          </button>
+      </div>
     </div>
   </div>
 
@@ -774,23 +769,23 @@
               />
           </div>
         </div>
-        <div class="modal-footer">
-          <button
-              type="button"
-              class="btn btn-secondary"
-              onclick="cerrarModal('modalEditarActividad')"
-            >
-              Cancelar
-            </button>
-          <button
-              type="button"
-              class="btn btn-success"
-              onclick="guardarEdicionActividad()"
-            >
-              Guardar Cambios
-            </button>
-        </div>
       </form>
+      <div class="modal-footer">
+        <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="cerrarModal('modalEditarActividad')"
+          >
+            Cancelar
+          </button>
+        <button
+            type="button"
+            class="btn btn-success"
+            onclick="guardarEdicionActividad()"
+          >
+            Guardar Cambios
+          </button>
+      </div>
     </div>
   </div>
 
@@ -843,28 +838,12 @@
           <textarea class="form-control" id="emerDescripcion" rows="3" required></textarea>
         </div>
 
-        <!-- AN&#xC1;LISIS DE CARGA -->
+        <!-- RESPONSABLES: botón que abre modal secundario -->
         <div class="form-group">
-          <label class="form-label">Seleccionar Responsables * <span id="emerSelCount" style="font-size:11px;color:var(--text-secondary);font-weight:400;">(ninguno seleccionado)</span></label>
-          <!-- Tabs: Colaboradores / Jefaturas -->
-          <div class="emer-tabs">
-            <button type="button" id="tabColabBtn" class="emer-tab-btn emer-tab-btn-colab" onclick="switchEmerTab('colab')">&#x1F464; Colaboradores</button>
-            <button type="button" id="tabJefeBtn" class="emer-tab-btn emer-tab-btn-jefe" onclick="switchEmerTab('jefe')">&#x1F3E2; Jefaturas</button>
-          </div>
-          <!-- Panel Colaboradores -->
-          <div id="panelEmerColab">
-            <div class="carga-panel-header">
-              <strong>&#x1F4CA; An&#xE1;lisis de Carga de Trabajo</strong>
-              <button type="button" class="btn btn-sm" onclick="cargarAnalisisCarga()">&#x1F504; Actualizar</button>
-            </div>
-            <div id="analisisCargaContainer" class="carga-scroll-container">
-              <p class="text-muted text-center">Cargando an&#xE1;lisis...</p>
-            </div>
-          </div>
-          <!-- Panel Jefaturas -->
-          <div id="panelEmerJefe" style="display:none;">
-            <div id="jefaturasEmerContainer" class="carga-scroll-container"></div>
-          </div>
+          <label class="form-label">Seleccionar Responsables *</label>
+          <button type="button" class="btn w-100" style="background:var(--surface-alt);border:1px solid var(--border);color:var(--text);text-align:left;padding:10px 14px;border-radius:8px;" onclick="abrirModalResponsablesEmer()">
+            &#x1F464; <span id="emerSelCount">Ninguno seleccionado</span> &#x276F;
+          </button>
         </div>
 
         <div class="form-group">
@@ -884,24 +863,59 @@
           />
         </div>
       </div>
-      <div class="modal-footer">
-        <button
-          type="button"
-          class="btn btn-secondary"
-          onclick="cerrarModal('modalActividadEmergente')"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="btn"
-          style="background: #e74c3c; color: white;"
-          onclick="crearActividadEmergente()"
-        >
-          &#x1F6A8; Crear Actividad Emergente
-        </button>
-      </div>
     </form>
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        onclick="cerrarModal('modalActividadEmergente')"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn"
+        style="background: #e74c3c; color: white;"
+        onclick="crearActividadEmergente()"
+      >
+        &#x1F6A8; Crear Actividad Emergente
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL SECUNDARIO: Seleccionar Responsables Emergente -->
+<div class="modal" id="modalResponsablesEmer" style="z-index:1100;">
+  <div class="modal-content" style="max-width:500px;">
+    <div class="modal-header" style="background:linear-gradient(135deg,#e74c3c,#c0392b);color:white;">
+      <h2 class="modal-title">&#x1F464; Seleccionar Responsables</h2>
+      <button class="btn-close" style="color:white;" onclick="cerrarModalResponsablesEmer()">&#xD7;</button>
+    </div>
+    <div class="modal-body" style="padding:16px 20px;">
+      <!-- Tabs -->
+      <div class="emer-tabs">
+        <button type="button" id="tabColabBtn" class="emer-tab-btn emer-tab-btn-colab" onclick="switchEmerTab('colab')">&#x1F464; Colaboradores</button>
+        <button type="button" id="tabJefeBtn" class="emer-tab-btn emer-tab-btn-jefe" onclick="switchEmerTab('jefe')">&#x1F3E2; Jefaturas</button>
+      </div>
+      <!-- Panel Colaboradores -->
+      <div id="panelEmerColab" style="margin-top:10px;">
+        <div class="carga-panel-header">
+          <strong>&#x1F4CA; An&#xE1;lisis de Carga de Trabajo</strong>
+          <button type="button" class="btn btn-sm" onclick="cargarAnalisisCarga()">&#x1F504; Actualizar</button>
+        </div>
+        <div id="analisisCargaContainer" class="carga-scroll-container">
+          <p class="text-muted text-center">Cargando an&#xE1;lisis...</p>
+        </div>
+      </div>
+      <!-- Panel Jefaturas -->
+      <div id="panelEmerJefe" style="display:none;margin-top:10px;">
+        <div id="jefaturasEmerContainer" class="carga-scroll-container"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-success" onclick="cerrarModalResponsablesEmer()">&#x2714; Confirmar Selecci&#xF3;n</button>
+    </div>
   </div>
 </div>
 
@@ -1285,7 +1299,7 @@
       }
 
       if (typeof paginaActual === "undefined") var paginaActual = 1;
-      if (typeof ITEMS_POR_PAGINA === "undefined") var ITEMS_POR_PAGINA = 10;
+      if (typeof ITEMS_POR_PAGINA === "undefined") var ITEMS_POR_PAGINA = 7;
       if (typeof actividadesMostradas === "undefined") var actividadesMostradas = [];
       if (typeof sortField === "undefined") var sortField = null;
       if (typeof sortDir === "undefined") var sortDir = 1;
@@ -1347,7 +1361,7 @@
       function renderizarPagina() {
         const tbody = document.getElementById("actividadesTable");
         if (!Array.isArray(actividadesMostradas) || actividadesMostradas.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;">📭 No hay actividades para mostrar</td></tr>';
+          tbody.innerHTML = '<div class="gtable-empty">&#x1F4ED; No hay actividades para mostrar</div>';
           renderizarCards([]);
           document.getElementById('paginacionInfo').textContent = '';
           document.getElementById('paginacionBotones').innerHTML = '';
@@ -1452,18 +1466,27 @@
             ? '<button class="btn-icon" onclick="eliminarActividad(\'' + act.id + '\')" title="Eliminar">&#x1F5D1;&#xFE0F;</button>'
             : '';
 
-          return '<tr' + filaStyle + '>'
-            + '<td>' + nuevaBadge + tipoBadge + '<strong>' + act.titulo + '</strong>' + alertaVencimiento + '</td>'
-            + '<td>' + proyectoDisplay + '</td>'
-            + '<td>' + responsableNombre + '</td>'
-            + '<td>' + estadoBadge + '</td>'
-            + '<td><div class="progress-cell"><div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + avancePct + '%;background:' + avanceColor + '"></div></div><span class="progress-text">' + avancePct + '%</span></div></td>'
-            + '<td><span class="badge-priority priority-' + prioridadClass + '">' + act.prioridad + '</span></td>'
-            + '<td style="white-space:nowrap;">' + fechaInicio + '</td>'
-            + '<td style="white-space:nowrap;">' + fechaFinDisplay + '</td>'
-            + '<td>' + cronBadge + '<div class="actions-cell"><button class="btn-icon" onclick="verDetalle(\'' + act.id + '\')" title="Ver detalle">&#x1F441;&#xFE0F;</button>' + accionBtn + elimBtn + '</div></td>'
-            + '</tr>';
+          var rowClass = 'gtable-row' + (filaStyle ? ' ' + filaStyle.replace(' class="','').replace('"','') : '');
+          return '<div class="' + rowClass + '">'
+            + '<div class="gcell gcol-titulo"><div class="gcell-inner titulo-inner">' + nuevaBadge + tipoBadge + '<strong>' + act.titulo + '</strong>' + alertaVencimiento + '</div></div>'
+            + '<div class="gcell gcol-proyecto"><div class="gcell-inner">' + proyectoDisplay + '</div></div>'
+            + '<div class="gcell gcol-resp"><div class="gcell-inner">' + responsableNombre + '</div></div>'
+            + '<div class="gcell gcol-estado"><div class="gcell-inner">' + estadoBadge + '</div></div>'
+            + '<div class="gcell gcol-avance"><div class="gcell-inner"><div class="progress-cell"><div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + avancePct + '%;background:' + avanceColor + '"></div></div><span class="progress-text">' + avancePct + '%</span></div></div></div>'
+            + '<div class="gcell gcol-prio"><div class="gcell-inner"><span class="badge-priority priority-' + prioridadClass + '">' + act.prioridad + '</span></div></div>'
+            + '<div class="gcell gcol-fi"><div class="gcell-inner">' + fechaInicio + '</div></div>'
+            + '<div class="gcell gcol-ff"><div class="gcell-inner">' + fechaFinDisplay + '</div></div>'
+            + '<div class="gcell gcol-acc"><div class="gcell-inner">' + cronBadge + '<div class="actions-cell"><button class="btn-icon" onclick="verDetalle(\'' + act.id + '\')" title="Ver detalle">&#x1F441;&#xFE0F;</button>' + accionBtn + elimBtn + '</div></div></div>'
+            + '</div>';
         }).join("");
+
+        // Rellenar con filas vacías hasta completar 7 filas (altura fija de tabla)
+        var filaActual = pagina.length;
+        var filasVacias = '';
+        for (var i = filaActual; i < ITEMS_POR_PAGINA; i++) {
+          filasVacias += '<div class="gtable-row gtable-row-empty"></div>';
+        }
+        tbody.innerHTML += filasVacias;
 
         // Cronómetros
         pagina.forEach(function(act) {
@@ -1555,7 +1578,7 @@
             if (proy) proyNombre = proy.nombre;
           }
 
-          return '<div class="' + cardClass + '" onclick="abrirDetalleCard(\"' + act.id + '\")">'
+          return '<div class="' + cardClass + '" onclick="editarActividad(\'' + act.id + '\')">'  
             + '<div class="act-card-accent" style="background:' + accentColor + ';"></div>'
             + '<div style="padding-left:8px;">'
             + '<div class="act-card-header">'
@@ -1581,6 +1604,17 @@
       }
 
       function abrirDetalleCard(id) {
+        // Si puede editar → abre el modal de edición directamente
+        var rol = usuarioActual ? usuarioActual.rol : '';
+        if (rol !== 'Colaborador') {
+          editarActividad(id);
+          return;
+        }
+        // Colaborador → abre modal de detalle (solo lectura)
+        _abrirDetalleCardReadOnly(id);
+      }
+
+      function _abrirDetalleCardReadOnly(id) {
         var act = actividadesData.filter(function(a){ return a.id === id; })[0];
         if (!act) return;
 
@@ -2316,6 +2350,10 @@
 
       function cerrarModal(modalId) {
         document.getElementById(modalId).classList.remove("active");
+        // Desbloquear scroll del body si no hay otro modal abierto
+        var hayModalAbierto = document.querySelector('.modal.active');
+        if (!hayModalAbierto) {
+        }
         
         // Auto-limpiar formularios al cerrar modales
         switch(modalId) {
@@ -2588,6 +2626,38 @@ function renderizarProyectos(proyectos) {
 /**
  * Abre el modal de nuevo proyecto
  */
+function abrirModalColabProyecto() {
+  // Copiar checkboxes del div oculto al modal, manteniendo estado
+  var src  = document.getElementById('colaboradoresCheckboxes');
+  var dest = document.getElementById('colaboradoresCheckboxesModal');
+  if (!src || !dest) return;
+  // Clonar y mostrar en el modal
+  dest.innerHTML = src.innerHTML;
+  // Sincronizar cambios de vuelta al div oculto al hacer clic
+  dest.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var orig = src.querySelector('input[value="' + cb.value + '"]');
+      if (orig) orig.checked = cb.checked;
+      actualizarConteoColabProyecto();
+    });
+  });
+  document.getElementById('modalColabProyecto').classList.add('active');
+}
+
+function cerrarModalColabProyecto() {
+  document.getElementById('modalColabProyecto').classList.remove('active');
+  actualizarConteoColabProyecto();
+}
+
+function actualizarConteoColabProyecto() {
+  var count = document.querySelectorAll('#colaboradoresCheckboxes input[type="checkbox"]:checked').length;
+  var el = document.getElementById('colabProyectoCount');
+  if (el) {
+    el.textContent = count === 0 ? 'Ninguno seleccionado' : count + ' seleccionado' + (count > 1 ? 's' : '');
+    el.style.color = count > 0 ? '#27ae60' : 'var(--text-secondary)';
+  }
+}
+
 function abrirModalNuevoProyecto() {
   console.log('Abriendo modal nuevo proyecto');
   
@@ -3097,12 +3167,21 @@ function renderizarAnalisisCarga(colaboradores) {
 }
 
 
+function abrirModalResponsablesEmer() {
+  document.getElementById('modalResponsablesEmer').classList.add('active');
+  cargarAnalisisCarga();
+}
+
+function cerrarModalResponsablesEmer() {
+  document.getElementById('modalResponsablesEmer').classList.remove('active');
+}
+
 function actualizarSeleccionEmer() {
   var checked = document.querySelectorAll('.emer-responsable-cb:checked');
   var count = checked.length;
   var countEl = document.getElementById('emerSelCount');
   if (countEl) {
-    countEl.textContent = count === 0 ? '(ninguno seleccionado)' : '(' + count + ' seleccionado' + (count > 1 ? 's' : '') + ')';
+    countEl.textContent = count === 0 ? 'Ninguno seleccionado' : count + ' seleccionado' + (count > 1 ? 's' : '');
     countEl.style.color = count > 0 ? '#27ae60' : 'var(--text-secondary)';
   }
 }

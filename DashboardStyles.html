@@ -8,6 +8,8 @@
   body {
     color: var(--text);
     line-height: 1.6;
+    overflow: hidden;   /* sin scroll en la página principal */
+    height: 100vh;
   }
 
   /* ── TOGGLE DE TEMA (override dashboard: esquina inferior derecha) ── */
@@ -180,6 +182,9 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: 30px 20px;
+    /* Altura fija basada en viewport — el contenido no empuja la página */
+    height: calc(100vh - 72px);  /* 72px = altura del header */
+    overflow: hidden;
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -310,23 +315,109 @@
   }
 
   /* La tabla NO se encoge — mantiene anchos fijos */
-  table {
+  /* ══════════════════════════════════════════════════════════
+     CSS GRID TABLE — altura de fila absolutamente fija
+     Columnas: titulo(28%) proyecto(10%) resp(9%) estado(10%)
+               avance(8%) prio(7%) f.ini(10%) f.fin(10%) acc(8%)
+  ══════════════════════════════════════════════════════════ */
+  .gtable {
     width: 100%;
-    min-width: 900px;   /* evita que las columnas se apilen */
-    border-collapse: collapse;
-    table-layout: fixed;
+    min-width: 860px;
+    font-size: 13px;
   }
 
-  /* Anchos de columna fijos */
-  table colgroup col:nth-child(1) { width: 22%; }  /* Título */
-  table colgroup col:nth-child(2) { width: 11%; }  /* Proyecto */
-  table colgroup col:nth-child(3) { width: 10%; }  /* Responsable */
-  table colgroup col:nth-child(4) { width: 10%; }  /* Estado */
-  table colgroup col:nth-child(5) { width: 9%;  }  /* Avance */
-  table colgroup col:nth-child(6) { width: 8%;  }  /* Prioridad */
-  table colgroup col:nth-child(7) { width: 12%; }  /* F.Inicio */
-  table colgroup col:nth-child(8) { width: 12%; }  /* F.Fin */
-  table colgroup col:nth-child(9) { width: 6%;  }  /* Acciones */
+  /* Grid de 9 columnas — mismas proporciones para header y filas */
+  .gtable-head,
+  .gtable-row {
+    display: grid;
+    grid-template-columns: 28% 10% 9% 10% 8% 7% 10% 10% 8%;
+    align-items: center;
+  }
+
+  /* ── HEADER ── */
+  .gtable-head {
+    background: var(--surface-alt);
+    border-bottom: 2px solid var(--border);
+    border-radius: 8px 8px 0 0;
+  }
+  .gcol {
+    padding: 10px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+  }
+  .gcol.sortable { cursor: pointer; }
+  .gcol.sortable:hover { color: var(--primary); }
+
+  /* ── FILAS DE DATOS ── */
+  .gtable-row {
+    height: 56px;          /* ALTURA FIJA — divs sí la respetan */
+    min-height: 56px;
+    max-height: 56px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s ease;
+    overflow: hidden;      /* corta cualquier contenido que sobresalga */
+  }
+  .gtable-row:hover { background: var(--surface-alt); }
+
+  /* Fila con vencimiento */
+  .gtable-row.fila-vencida { background: rgba(241,98,77,.07); }
+  .gtable-row.fila-completada-atraso { background: rgba(242,150,56,.07); }
+
+  /* ── CELDAS ── */
+  .gcell {
+    height: 56px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+  }
+
+  /* Inner wrapper: controla overflow y truncado */
+  .gcell-inner {
+    overflow: hidden;
+    width: 100%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* Título: hasta 2 líneas con ellipsis */
+  .gcell.gcol-titulo { align-items: flex-start; padding-top: 10px; }
+  .titulo-inner {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: normal;
+    line-height: 1.35;
+    word-break: break-word;
+    width: 100%;
+  }
+
+  /* ── FILAS VACÍAS DE RELLENO ── */
+  .gtable-row-empty {
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    pointer-events: none;
+  }
+  .gtable-row-empty:hover { background: transparent; }
+
+  /* Mensajes de estado vacío/cargando */
+  .gtable-empty,
+  .gtable-loading {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-secondary);
+  }
 
   th {
     padding: 10px 10px;
@@ -568,7 +659,7 @@
   .modal {
     display: none;
     position: fixed;
-    top: 0; left: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
     width: 100%; height: 100%;
     background: var(--modal-overlay, rgba(0,0,0,.6));
     z-index: 1000;
@@ -576,23 +667,70 @@
     justify-content: center;
     padding: 20px;
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
   }
 
   .modal.active { display: flex; }
 
   .modal-content {
     background: var(--surface);
-    border-radius: 16px;
-    max-width: 600px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
+    border-radius: 12px;
+    max-width: 500px;
+    width: calc(100% - 32px);
+    /* Usar dvh (dynamic viewport) con fallback vh.
+       dvh resta automáticamente la barra del navegador en móvil.
+       70vh es conservador — garantiza que el footer siempre sea visible
+       incluso con zoom, barras de navegador y densidades de pantalla altas. */
+    max-height: 70vh;
+    max-height: 70dvh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 20px 60px rgba(0,0,0,.3);
     border: 1px solid var(--border);
   }
 
+  /* El body scrollea — ocupa todo el espacio entre header y footer */
+  .modal-body {
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 14px 18px;    /* más compacto para que quepan más campos */
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* El <form> dentro del modal hereda el flex para que modal-body pueda scrollear */
+  .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Footer siempre visible */
+  .modal-footer {
+    flex-shrink: 0;
+  }
+
+  /* Form groups dentro de modales: más compactos */
+  .modal-body .form-group {
+    margin-bottom: 12px;
+  }
+  .modal-body .form-label {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .modal-body .form-control {
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+  .modal-body textarea.form-control {
+    min-height: 70px;
+  }
+
   .modal-header {
-    padding: 20px 25px;
+    padding: 14px 20px;
     border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
@@ -622,18 +760,26 @@
 
   .btn-close:hover { opacity: 1; background: var(--surface-alt); }
 
-  .modal-body { padding: 25px; }
+  /* .modal-body padding defined above */
 
   .modal-footer {
-    padding: 20px 25px;
+    padding: 12px 20px;
     border-top: 1px solid var(--border);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+    flex-shrink: 0;
+    background: var(--surface);
   }
 
   /* ── Modal Notificación Emergente ── */
   #modalNotificacionEmergente .modal-content { max-width: 500px; }
+
+  /* Mini modales de selección: scroll auto, sin barra forzada */
+  #modalResponsablesEmer .modal-body,
+  #modalColabProyecto .modal-body {
+    overflow-y: auto;
+  }
 
   #modalNotificacionEmergente .modal-header {
     background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
@@ -1038,10 +1184,16 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease;
     position: relative;
     overflow: hidden;
+    /* Evitar que el tap "cuelgue" en móvil */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
   }
   .act-card:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
     box-shadow: 0 1px 4px var(--shadow-strong);
+    opacity: 0.9;
   }
 
   /* Barra de color izquierda (indica prioridad) */
@@ -1183,13 +1335,42 @@
      Aquí solo se definen los estados visuales de cada modo.
   ══════════════════════════════════════════════════════════ */
 
+  /* Cards container: scroll fluido sin atrapar el gesto */
+  #vistaCards {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
   /* Estado inicial: tabla visible, cards oculto.
      JS sobreescribe con .style.display según ancho real. */
   #vistaTabla { display: block; }
   #vistaCards { display: none; }
 
   /* Modo mobile — clase aplicada por JS al <body> */
-  body.modo-mobile .user-info       { display: none; }
+  /* En mobile: nombre y cargo visibles, compactos, al lado del botón actualizar */
+  body.modo-mobile .user-info {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    text-align: left;
+  }
+  body.modo-mobile .user-name {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+  }
+  body.modo-mobile .user-role {
+    font-size: 10px;
+    padding: 1px 6px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
   body.modo-mobile .header-content  { height: 52px; }
   body.modo-mobile .stats-grid      { gap: 6px; }
   body.modo-mobile .stat-card       { min-width: 90px; padding: 7px 10px; }
@@ -1208,15 +1389,71 @@
   }
   body.modo-mobile .filters::-webkit-scrollbar { display: none; }
   body.modo-mobile .filter-select   { min-width: 128px; flex-shrink: 0; font-size: 12px; padding: 6px 8px; }
-  body.modo-mobile .modal           { align-items: flex-end; }
-  body.modo-mobile .modal-content   {
+
+  /* Mobile: permitir scroll en página y contenedor */
+  body.modo-mobile,
+  body.modo-mobile-xs {
+    overflow: auto !important;
+    height: auto !important;
+  }
+  body.modo-mobile .container,
+  body.modo-mobile-xs .container {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  body.modo-mobile .modal {
+    align-items: center;
+    padding: 12px;
+  }
+  body.modo-mobile .modal-content {
     margin: 0;
-    border-radius: 20px 20px 0 0;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    max-height: 90vh;
-    overflow-y: auto;
+    border-radius: 12px;
+    width: calc(100% - 24px);
     max-width: 100% !important;
+    max-height: 88dvh;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Modales secundarios: centrados, tamaño automático (no full-screen) */
+  body.modo-mobile #modalResponsablesEmer,
+  body.modo-mobile #modalColabProyecto {
+    align-items: center;
+    padding: 20px;
+  }
+  body.modo-mobile #modalResponsablesEmer .modal-content,
+  body.modo-mobile #modalColabProyecto .modal-content {
+    position: relative;
+    top: auto; bottom: auto; left: auto; right: auto;
+    height: auto;
+    max-height: 80vh;
+    border-radius: 16px;
+    max-width: 100% !important;
+  }
+  /* form dentro del modal en mobile también hereda flex */
+  body.modo-mobile .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  body.modo-mobile .modal-body {
+    padding: 16px 20px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  body.modo-mobile .modal-footer {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
   }
   body.modo-mobile .act-card-meta   { grid-template-columns: 1fr 1fr; }
 
@@ -1243,19 +1480,28 @@
   /* Paginación container */
   .paginacion-container {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 16px;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 12px;
+    gap: 6px;
+    max-width: 50%;
+    /* Altura fija: no se redimensiona */
+    min-height: 52px;
+    height: 52px;
   }
   .paginacion-info {
     font-size: 12px;
     color: var(--text-secondary);
+    white-space: nowrap;
+    height: 16px;
+    line-height: 16px;
   }
   .paginacion-botones {
     display: flex;
-    gap: 6px;
+    gap: 4px;
+    flex-wrap: nowrap;   /* nunca se parte en varias líneas */
+    height: 28px;
+    align-items: center;
   }
 
   /* Sortable table headers */
@@ -1263,6 +1509,7 @@
     cursor: pointer;
     user-select: none;
   }
+
   th.sortable:hover { background: var(--surface-alt); }
 
   /* Botón emergente en barra de acciones */
