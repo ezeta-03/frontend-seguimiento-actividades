@@ -11,8 +11,13 @@
 </head>
 
 <body>
+  <!-- Botón toggle de tema -->
   <div class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">
     <span id="themeIcon">&#x2600;&#xFE0F;</span>
+  </div>
+  <!-- Botón toggle de vista: desktop (tabla) ↔ mobile (cards) -->
+  <div class="view-toggle" id="viewToggleBtn" onclick="toggleVista()" title="Cambiar vista">
+    <span id="viewIcon">&#x1F4F1;</span>
   </div>
 
 
@@ -22,7 +27,7 @@
       <div class="logo-section">
         <img src="https://www.zaazmago.com/canvas/wp-content/uploads/logo-zaaz-mago-001.svg" 
        alt="Logo" 
-       style="height: 40px; width: auto; margin-right: 12px;" />
+       class="logo-img" />
         <span class="logo-text">Sistema de Actividades</span>
       </div>
       <div class="user-section">
@@ -142,7 +147,7 @@
           />
       </div>
 
-      <div style="display: flex; gap: 10px; flex-wrap: wrap">
+      <div class="actions-group">
         <!-- NUEVO: Bot&#xF3;n de Proyectos -->
         <button
             class="btn"
@@ -159,7 +164,8 @@
   class="btn" 
   onclick="abrirModalActividadEmergente()"
   id="btnActividadEmergente"
-  style="display: none; background: #e74c3c; color: white;"
+  class="btn btn-emergente"
+  style="display: none;"
 >
   <span>&#x1F6A8;</span> Actividad Emergente
 </button>
@@ -167,19 +173,19 @@
       </div>
     </div>
 
-    <!-- TABLE -->
-    <div class="table-container">
+    <!-- TABLE (desktop) -->
+    <div class="table-container" id="vistaTabla">
       <table>
         <thead>
           <tr>
-            <th onclick="ordenarPor('titulo')" style="cursor:pointer;user-select:none;">T&#xED;tulo <span id="sort-titulo">&#x21C5;</span></th>
-            <th onclick="ordenarPor('proyecto')" style="cursor:pointer;user-select:none;">Proyecto <span id="sort-proyecto">&#x21C5;</span></th>
-            <th onclick="ordenarPor('responsable')" style="cursor:pointer;user-select:none;">Responsable <span id="sort-responsable">&#x21C5;</span></th>
-            <th onclick="ordenarPor('estado')" style="cursor:pointer;user-select:none;">Estado <span id="sort-estado">&#x21C5;</span></th>
-            <th onclick="ordenarPor('avance')" style="cursor:pointer;user-select:none;">Avance <span id="sort-avance">&#x21C5;</span></th>
-            <th onclick="ordenarPor('prioridad')" style="cursor:pointer;user-select:none;">Prioridad <span id="sort-prioridad">&#x21C5;</span></th>
-            <th onclick="ordenarPor('fechaInicio')" style="cursor:pointer;user-select:none;">F. Inicio <span id="sort-fechaInicio">&#x21C5;</span></th>
-            <th onclick="ordenarPor('fechaFin')" style="cursor:pointer;user-select:none;">F. Fin <span id="sort-fechaFin">&#x21C5;</span></th>
+            <th class="sortable" onclick="ordenarPor('titulo')">T&#xED;tulo <span id="sort-titulo">&#x21C5;</span></th>
+            <th class="sortable" onclick="ordenarPor('proyecto')">Proyecto <span id="sort-proyecto">&#x21C5;</span></th>
+            <th class="sortable" onclick="ordenarPor('responsable')">Responsable <span id="sort-responsable">&#x21C5;</span></th>
+            <th class="sortable" onclick="ordenarPor('estado')">Estado <span id="sort-estado">&#x21C5;</span></th>
+            <th class="sortable" onclick="ordenarPor('avance')">Avance <span id="sort-avance">&#x21C5;</span></th>
+            <th class="sortable" onclick="ordenarPor('prioridad')">Prioridad <span id="sort-prioridad">&#x21C5;</span></th>
+            <th class="sortable" onclick="ordenarPor('fechaInicio')">F. Inicio <span id="sort-fechaInicio">&#x21C5;</span></th>
+            <th class="sortable" onclick="ordenarPor('fechaFin')">F. Fin <span id="sort-fechaFin">&#x21C5;</span></th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -195,10 +201,28 @@
         </tbody>
       </table>
     </div>
+
+    <!-- CARDS (mobile) -->
+    <div id="vistaCards">
+      <div id="actividadesCards"></div>
+    </div>
+
     <!-- PAGINACI&#xD3;N -->
-    <div id="paginacionContainer" style="display:flex;justify-content:center;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px;">
-      <div style="font-size:12px;color:var(--text-secondary);" id="paginacionInfo"></div>
-      <div style="display:flex;gap:6px;" id="paginacionBotones"></div>
+    <div id="paginacionContainer" class="paginacion-container">
+      <div id="paginacionInfo" class="paginacion-info"></div>
+      <div id="paginacionBotones" class="paginacion-botones"></div>
+    </div>
+
+    <!-- MODAL DETALLE CARD (mobile) -->
+    <div class="modal" id="modalDetalleCard">
+      <div class="modal-content" style="max-width:480px;">
+        <div class="modal-header" id="modalDetalleCardHeader">
+          <h2 class="modal-title" id="modalDetalleCardTitulo">Detalle</h2>
+          <button class="btn-close" onclick="cerrarModal('modalDetalleCard')">&#xD7;</button>
+        </div>
+        <div class="modal-body" id="modalDetalleCardBody"></div>
+        <div class="modal-footer" id="modalDetalleCardFooter"></div>
+      </div>
     </div>
     <!-- MODAL VISTA PROYECTOS -->
     <div class="modal" id="modalVistaProyectos">
@@ -537,12 +561,12 @@
             <select class="form-control" id="proyectoId">
               <option value="">Sin proyecto asignado</option>
             </select>
-            <small style="color: #6c757d; font-size: 12px;">Puedes vincular esta actividad a un proyecto existente</small>
+            <small class="form-hint">Puedes vincular esta actividad a un proyecto existente</small>
           </div>
 
           <!-- GERENCIA: sin campos de personas, solo ve este aviso -->
           <div id="gerenciaAutoAsignada" style="display:none;">
-            <div style="background:rgba(255,76,0,0.08);border-left:3px solid var(--primary);padding:10px 14px;border-radius:6px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+            <div class="info-banner-primary">
               &#x1F4CC; Esta actividad quedar&#xE1; asignada a ti como Gerencia.
             </div>
           </div>
@@ -550,13 +574,13 @@
           <!-- JEFATURA: jefaturas adicionales + colaboradores -->
           <div id="jefaturaAdicionalGroup" style="display:none;">
             <div class="form-group">
-              <label class="form-label">Jefaturas adicionales <span style="font-weight:400;opacity:.7;">(opcional)</span></label>
+              <label class="form-label">Jefaturas adicionales <span class="form-label-optional">(opcional)</span></label>
               <div id="checkJefaturasAdicionales" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);padding:10px;border-radius:8px;">
                 <!-- Se llena dinámicamente -->
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Colaboradores asignados <span style="font-weight:400;opacity:.7;">(opcional)</span></label>
+              <label class="form-label">Colaboradores asignados <span class="form-label-optional">(opcional)</span></label>
               <div id="checkColaboradoresJefatura" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);padding:10px;border-radius:8px;">
                 <!-- Se llena dinámicamente -->
               </div>
@@ -566,7 +590,7 @@
           <!-- COLABORADOR: colaboradores adicionales -->
           <div id="colaboradorAdicionalGroup" style="display:none;">
             <div class="form-group">
-              <label class="form-label">Colaboradores adicionales <span style="font-weight:400;opacity:.7;">(opcional)</span></label>
+              <label class="form-label">Colaboradores adicionales <span class="form-label-optional">(opcional)</span></label>
               <div id="checkColaboradoresAdicionales" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);padding:10px;border-radius:8px;">
                 <!-- Se llena dinámicamente -->
               </div>
@@ -718,7 +742,7 @@
               value="0"
               onchange="sincronizarEstadoAvance('avance')"
             />
-            <small style="color: #6c757d; font-size: 12px;">Indica el progreso de la actividad</small>
+            <small class="form-hint">Indica el progreso de la actividad</small>
           </div>
 
           <div class="form-group">
@@ -786,25 +810,25 @@
     <form id="formActividadEmergente" onsubmit="return false;">
       <div class="modal-body">
         
-        <div style="background: transparent; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+        <div class="aviso-alta-prioridad">
           <strong>&#x26A0;&#xFE0F; Actividad de Alta Prioridad</strong>
-          <p style="margin: 5px 0 0 0; font-size: 13px;">Esta actividad ser&#xE1; notificada inmediatamente al colaborador y requerir&#xE1; su aceptaci&#xF3;n.</p>
+          <p>Esta actividad ser&#xE1; notificada inmediatamente al colaborador y requerir&#xE1; su aceptaci&#xF3;n.</p>
         </div>
 
         <div class="form-group">
           <label class="form-label">Tipo de Actividad *</label>
-          <div style="display:flex;gap:12px;margin-top:6px;">
-            <label style="flex:1;cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:12px;text-align:center;transition:all 0.2s;" id="tipoUrgenteLbl" onclick="seleccionarTipoEmergente('Urgente')">
-              <input type="radio" name="emerTipo" id="emerTipoUrgente" value="Urgente" style="display:none;" />
-              <div style="font-size:24px;">&#x1F525;</div>
-              <div style="font-weight:700;color:#ff4c00;">Urgente</div>
-              <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Se realiza el mismo d&#xED;a</div>
+          <div class="tipo-selector">
+            <label class="tipo-selector-item" id="tipoUrgenteLbl" onclick="seleccionarTipoEmergente('Urgente')">
+              <input type="radio" name="emerTipo" id="emerTipoUrgente" value="Urgente" />
+              <div class="tipo-selector-icon">&#x1F525;</div>
+              <div class="tipo-selector-label-urgente">Urgente</div>
+              <div class="tipo-selector-desc">Se realiza el mismo d&#xED;a</div>
             </label>
-            <label style="flex:1;cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:12px;text-align:center;transition:all 0.2s;" id="tipoEmergenteLbl" onclick="seleccionarTipoEmergente('Emergente')">
-              <input type="radio" name="emerTipo" id="emerTipoEmergente" value="Emergente" style="display:none;" />
-              <div style="font-size:24px;">&#x1F6A8;</div>
-              <div style="font-weight:700;color:#e74c3c;">Emergente</div>
-              <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Puede tomar varios d&#xED;as</div>
+            <label class="tipo-selector-item" id="tipoEmergenteLbl" onclick="seleccionarTipoEmergente('Emergente')">
+              <input type="radio" name="emerTipo" id="emerTipoEmergente" value="Emergente" />
+              <div class="tipo-selector-icon">&#x1F6A8;</div>
+              <div class="tipo-selector-label-emergente">Emergente</div>
+              <div class="tipo-selector-desc">Puede tomar varios d&#xED;as</div>
             </label>
           </div>
         </div>
@@ -821,19 +845,26 @@
 
         <!-- AN&#xC1;LISIS DE CARGA -->
         <div class="form-group">
-          <label class="form-label">Seleccionar Colaborador *</label>
-          <div style="background: transparent; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <label class="form-label">Seleccionar Responsables * <span id="emerSelCount" style="font-size:11px;color:var(--text-secondary);font-weight:400;">(ninguno seleccionado)</span></label>
+          <!-- Tabs: Colaboradores / Jefaturas -->
+          <div class="emer-tabs">
+            <button type="button" id="tabColabBtn" class="emer-tab-btn emer-tab-btn-colab" onclick="switchEmerTab('colab')">&#x1F464; Colaboradores</button>
+            <button type="button" id="tabJefeBtn" class="emer-tab-btn emer-tab-btn-jefe" onclick="switchEmerTab('jefe')">&#x1F3E2; Jefaturas</button>
+          </div>
+          <!-- Panel Colaboradores -->
+          <div id="panelEmerColab">
+            <div class="carga-panel-header">
               <strong>&#x1F4CA; An&#xE1;lisis de Carga de Trabajo</strong>
-              <button type="button" class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="cargarAnalisisCarga()">
-                &#x1F504; Actualizar
-              </button>
+              <button type="button" class="btn btn-sm" onclick="cargarAnalisisCarga()">&#x1F504; Actualizar</button>
             </div>
-            <div id="analisisCargaContainer" style="max-height: 300px; overflow-y: auto; color: #000000">
-              <p style="text-align: center; color: #7f8c8d;">Cargando an&#xE1;lisis...</p>
+            <div id="analisisCargaContainer" class="carga-scroll-container">
+              <p class="text-muted text-center">Cargando an&#xE1;lisis...</p>
             </div>
           </div>
-          <input type="hidden" id="emerResponsable" required />
+          <!-- Panel Jefaturas -->
+          <div id="panelEmerJefe" style="display:none;">
+            <div id="jefaturasEmerContainer" class="carga-scroll-container"></div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -911,9 +942,9 @@
     </div>
     <div class="modal-body">
       
-      <div style="background: transparent; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f39c12;">
+      <div class="aviso-pausa">
         <strong>&#x26A0;&#xFE0F; &#xBF;Necesitas pausar alguna actividad?</strong>
-        <p style="margin: 8px 0 0 0; font-size: 13px;">
+        <p class="aviso-pausa-text">
           Al aceptar esta actividad emergente, puedes pausar temporalmente tus actividades en proceso.
           Cuando completes la emergente, se reanudar&#xE1;n autom&#xE1;ticamente.
         </p>
@@ -923,8 +954,8 @@
         <!-- Se llena din&#xE1;micamente -->
       </div>
 
-      <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ecf0f1;">
-        <div style="display: flex; align-items: center; gap: 10px; color: #7f8c8d; font-size: 13px;">
+      <div class="pausa-footer-info">
+        <div class="pausa-footer-text">
           <span>&#x1F4A1;</span>
           <span>Puedes continuar sin pausar ninguna actividad si prefieres trabajar en paralelo.</span>
         </div>
@@ -969,7 +1000,7 @@
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">Selecciona el proyecto</label>
-          <select class="form-control" id="miniModalProyectoSelect" style="font-size:14px;">
+          <select class="form-control select-proyecto" id="miniModalProyectoSelect">
             <option value="">Sin proyecto asignado</option>
           </select>
         </div>
@@ -989,20 +1020,20 @@
   </div>
 
   <script>
-      let usuarioActual = null;
-      let actividadesData = [];
-      let usuariosColaboradores = [];
-      let usuariosJefes = [];
-      let usuariosGerentes = [];
-      let proyectosGlobal = [];
-      let datosListos = false;
+      if (typeof usuarioActual === "undefined") var usuarioActual = null;
+      if (typeof actividadesData === "undefined") var actividadesData = [];
+      if (typeof usuariosColaboradores === "undefined") var usuariosColaboradores = [];
+      if (typeof usuariosJefes === "undefined") var usuariosJefes = [];
+      if (typeof usuariosGerentes === "undefined") var usuariosGerentes = [];
+      if (typeof proyectosGlobal === "undefined") var proyectosGlobal = [];
+      if (typeof datosListos === "undefined") var datosListos = false;
 
-      let colaboradoresConCarga = [];
-      let actividadEmergenteSeleccionada = null;
-      let cronometrosActivos = {};
+      if (typeof colaboradoresConCarga === "undefined") var colaboradoresConCarga = [];
+      if (typeof actividadEmergenteSeleccionada === "undefined") var actividadEmergenteSeleccionada = null;
+      if (typeof cronometrosActivos === "undefined") var cronometrosActivos = {};
 
-      let actividadesSeleccionadasParaPausar = [];
-      let actividadesEnProcesoColaborador = [];
+      if (typeof actividadesSeleccionadasParaPausar === "undefined") var actividadesSeleccionadasParaPausar = [];
+      if (typeof actividadesEnProcesoColaborador === "undefined") var actividadesEnProcesoColaborador = [];
 
       // INICIALIZACIÓN
       
@@ -1232,12 +1263,18 @@
           .withSuccessHandler(function (actividades) {
             console.log("Actividades recibidas:", actividades);
             if (!Array.isArray(actividades)) actividades = [];
+            // Ordenar de más reciente a más antigua
+            actividades.sort(function(a, b) {
+              var fa = a.fechaCreacion ? new Date(a.fechaCreacion) : 0;
+              var fb = b.fechaCreacion ? new Date(b.fechaCreacion) : 0;
+              return fb - fa;
+            });
             actividadesData = actividades; // guardar globalmente
             window.actividadesData = actividades; // exponer para funciones externas
             actualizarEstadisticas(actividades);
             renderizarActividades(actividades);
             mostrarLoading(false);
-            if (typeof onComplete === "function") onComplete();
+                if (typeof onComplete === "function") onComplete();
           })
           .withFailureHandler(function (error) {
             console.error("Error al cargar actividades:", error);
@@ -1247,11 +1284,59 @@
           .obtenerActividades();
       }
 
-      let paginaActual = 1;
-      const ITEMS_POR_PAGINA = 10;
-      let actividadesMostradas = [];
-      let sortField = null;
-      let sortDir = 1;
+      if (typeof paginaActual === "undefined") var paginaActual = 1;
+      if (typeof ITEMS_POR_PAGINA === "undefined") var ITEMS_POR_PAGINA = 10;
+      if (typeof actividadesMostradas === "undefined") var actividadesMostradas = [];
+      if (typeof sortField === "undefined") var sortField = null;
+      if (typeof sortDir === "undefined") var sortDir = 1;
+
+      // ══════════════════════════════════════════════════════════════
+      // TOGGLE DE VISTA: Desktop (tabla) ↔ Mobile (cards)
+      // Funciona igual que el toggle de tema — botón manual.
+      // No depende de media queries ni del viewport del iframe de GAS.
+      // ══════════════════════════════════════════════════════════════
+      var _modoMobile = false;
+
+      function aplicarVista(mobile) {
+        var tabla = document.getElementById('vistaTabla');
+        var cards = document.getElementById('vistaCards');
+        var icon  = document.getElementById('viewIcon');
+        var btn   = document.getElementById('viewToggleBtn');
+        if (!tabla || !cards) return;
+
+        _modoMobile = mobile;
+
+        if (mobile) {
+          tabla.style.display = 'none';
+          cards.style.display = 'block';
+          if (icon) icon.innerHTML = '&#x1F5A5;'; // 🖥
+          if (btn)  btn.title = 'Cambiar a vista desktop';
+          document.body.classList.add('modo-mobile');
+          document.body.classList.remove('modo-desktop');
+        } else {
+          tabla.style.display = 'block';
+          cards.style.display = 'none';
+          if (icon) icon.innerHTML = '&#x1F4F1;'; // 📱
+          if (btn)  btn.title = 'Cambiar a vista móvil';
+          document.body.classList.remove('modo-mobile');
+          document.body.classList.add('modo-desktop');
+        }
+        // Guardar preferencia
+        try { localStorage.setItem('vistaMode', mobile ? 'mobile' : 'desktop'); } catch(e) {}
+      }
+
+      function toggleVista() {
+        aplicarVista(!_modoMobile);
+      }
+
+      // Cargar preferencia guardada al iniciar (igual que el tema)
+      (function() {
+        var saved = null;
+        try { saved = localStorage.getItem('vistaMode'); } catch(e) {}
+        // Por defecto: desktop
+        aplicarVista(saved === 'mobile');
+      })();
+      // ══════════════════════════════════════════════════════════════
 
       function renderizarActividades(actividades) {
         actividadesMostradas = actividades;
@@ -1263,6 +1348,7 @@
         const tbody = document.getElementById("actividadesTable");
         if (!Array.isArray(actividadesMostradas) || actividadesMostradas.length === 0) {
           tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;">📭 No hay actividades para mostrar</td></tr>';
+          renderizarCards([]);
           document.getElementById('paginacionInfo').textContent = '';
           document.getElementById('paginacionBotones').innerHTML = '';
           return;
@@ -1272,6 +1358,9 @@
         const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
         const fin = Math.min(inicio + ITEMS_POR_PAGINA, actividadesMostradas.length);
         const pagina = actividadesMostradas.slice(inicio, fin);
+
+        // Render cards for mobile
+        renderizarCards(pagina);
 
         tbody.innerHTML = pagina.map(function(act) {
           const prioridadClass = act.prioridad.toLowerCase();
@@ -1299,10 +1388,10 @@
           let filaStyle         = '';
 
           if (esVencidaVisual) {
-            filaStyle         = ' style="background:rgba(241,98,77,0.08);border-left:3px solid #f1624d;"';
+            filaStyle         = ' class="fila-vencida"';
             alertaVencimiento = ' <span title="Actividad vencida" style="color:#f1624d;font-size:13px;">&#x1F534;</span>';
           } else if (act.estado === 'Completada con Atraso') {
-            filaStyle         = ' style="background:rgba(242,150,56,0.08);border-left:3px solid #f29638;"';
+            filaStyle         = ' class="fila-completada-atraso"';
             alertaVencimiento = ' <span title="Completada con atraso" style="color:#f29638;font-size:13px;">&#x26A0;&#xFE0F;</span>';
           } else if (estaActiva && diasRestantes !== null && diasRestantes <= 2 && diasRestantes >= 0) {
             alertaVencimiento = ' <span title="Vence en ' + diasRestantes + ' d\u00eda(s)" style="color:#f29638;font-size:13px;">&#x23F0;</span>';
@@ -1332,9 +1421,14 @@
           const userEncontrado = todos.find(function(u) { return u.email === act.responsable; });
           const responsableNombre = userEncontrado ? userEncontrado.nombre : (act.responsable ? act.responsable.split("@")[0] : '-');
 
-          const tipoBadge = act.tipo === 'Urgente'
-            ? '<span class="badge-emergente" style="background:linear-gradient(135deg,#ff4c00,#ff6b2b);">&#x1F525; URGENTE</span> '
-            : (act.tipo === 'Emergente' ? '<span class="badge-emergente">&#x1F6A8; EMERGENTE</span> ' : '');
+          var hoy = new Date();
+          var fechaCreac = act.fechaCreacion ? new Date(act.fechaCreacion) : null;
+          var esNueva = fechaCreac && (hoy - fechaCreac) < 24 * 60 * 60 * 1000;
+          var nuevaBadge = esNueva ? '<span class="badge-nueva" title="Nueva (últimas 24h)"></span>' : '';
+          var tipoNorm = (act.tipo || '').trim().toLowerCase();
+          const tipoBadge = tipoNorm === 'urgente'
+            ? '<span class="badge-tipo-urgente">&#x1F525; urg.</span> '
+            : (tipoNorm === 'emergente' ? '<span class="badge-tipo-emergente">&#x1F6A8; emerg.</span> ' : '');
 
           const estadoBadge = estadoMostrado === 'Suspendida'
             ? '<span class="badge-suspendida">&#x23F8;&#xFE0F; SUSPENDIDA</span>'
@@ -1359,7 +1453,7 @@
             : '';
 
           return '<tr' + filaStyle + '>'
-            + '<td>' + tipoBadge + '<strong>' + act.titulo + '</strong>' + alertaVencimiento + '</td>'
+            + '<td>' + nuevaBadge + tipoBadge + '<strong>' + act.titulo + '</strong>' + alertaVencimiento + '</td>'
             + '<td>' + proyectoDisplay + '</td>'
             + '<td>' + responsableNombre + '</td>'
             + '<td>' + estadoBadge + '</td>'
@@ -1396,6 +1490,185 @@
         html += '<button style="' + btnS + '" onclick="cambiarPagina(' + (paginaActual+1) + ')" ' + (paginaActual===totalPaginas?'disabled':'') + '>›</button>';
         botonesEl.innerHTML = html;
       }
+
+
+      // ─── MOBILE CARDS RENDERER ─────────────────────────────
+      function renderizarCards(pagina) {
+        var cont = document.getElementById('actividadesCards');
+        if (!Array.isArray(pagina) || pagina.length === 0) {
+          cont.innerHTML = '<div class="cards-empty"><div class="cards-empty-icon">📭</div><p>No hay actividades para mostrar</p></div>';
+          return;
+        }
+        cont.innerHTML = pagina.map(function(act) {
+          // Badges
+          var tipoNorm = (act.tipo || '').trim().toLowerCase();
+          var tipoBadgeCard = tipoNorm === 'urgente'
+            ? '<span class="badge-tipo-urgente">&#x1F525; urg.</span>'
+            : (tipoNorm === 'emergente' ? '<span class="badge-tipo-emergente">&#x1F6A8; emerg.</span>' : '');
+
+          var hoyC = new Date();
+          var fechaCreacC = act.fechaCreacion ? new Date(act.fechaCreacion) : null;
+          var esNuevaC = fechaCreacC && (hoyC - fechaCreacC) < 24*60*60*1000;
+          var nuevaDot = esNuevaC ? '<span class="badge-nueva" title="Nueva"></span>' : '';
+
+          // Estado color
+          var estadoColors = {
+            'Pendiente':'#f29638','En Proceso':'#4d74b8','En Revision':'#4e75b6',
+            'En Revisión':'#4e75b6','Completada':'#09b2a1','Vencida':'#f1624d',
+            'Cancelada':'#de5f7d','Suspendida':'#95a5a6','Pendiente de Aceptación':'#9b59b6',
+            'Completada con Atraso':'#f29638'
+          };
+          var estadoColor = estadoColors[act.estado] || 'var(--text-secondary)';
+
+          // Prioridad color for accent bar
+          var accentColor = act.prioridad === 'Alta' ? '#f1624d'
+            : act.prioridad === 'Media' ? '#f29638'
+            : act.prioridad === 'Urgente' ? '#ff4c00'
+            : act.prioridad === 'Emergente' ? '#e74c3c'
+            : '#09b2a1';
+
+          // Progress
+          var avancePct = Math.min(100, Math.max(0, parseInt(act.avance) || 0));
+          var avanceColor = avancePct === 100 ? 'var(--progress-complete)'
+            : avancePct >= 70 ? 'var(--progress-success)'
+            : avancePct >= 40 ? 'var(--progress-warning)'
+            : 'var(--progress-danger)';
+
+          // Dates
+          var fechaFin = act.fechaFin ? new Date(act.fechaFin).toLocaleDateString('es-ES') : '-';
+          var fechaInicio = act.fechaInicio ? new Date(act.fechaInicio).toLocaleDateString('es-ES') : '-';
+
+          // Responsible name
+          var todos = [].concat(usuariosColaboradores, usuariosJefes, usuariosGerentes);
+          var userEnc = todos.filter(function(u){ return u.email === act.responsable; })[0];
+          var respNombre = userEnc ? userEnc.nombre : (act.responsable ? act.responsable.split('@')[0] : '-');
+
+          // Vencida
+          var fechaFinDate = act.fechaFin ? new Date(act.fechaFin) : null;
+          var esVencida = act.estado === 'Vencida' || (fechaFinDate && fechaFinDate < hoyC && ['Pendiente','En Proceso','En Revisión'].includes(act.estado));
+          var cardClass = 'act-card' + (esVencida ? ' act-card-vencida' : '');
+
+          // Project
+          var proyNombre = '';
+          if (act.proyectoId && proyectosGlobal.length) {
+            var proy = proyectosGlobal.filter(function(p){ return p.id === act.proyectoId; })[0];
+            if (proy) proyNombre = proy.nombre;
+          }
+
+          return '<div class="' + cardClass + '" onclick="abrirDetalleCard(\"' + act.id + '\")">'
+            + '<div class="act-card-accent" style="background:' + accentColor + ';"></div>'
+            + '<div style="padding-left:8px;">'
+            + '<div class="act-card-header">'
+            +   '<div class="act-card-titulo">' + nuevaDot + act.titulo + '</div>'
+            +   '<div class="act-card-badges">' + tipoBadgeCard + '</div>'
+            + '</div>'
+            + '<div class="act-card-meta">'
+            +   '<div class="act-card-meta-item"><span class="act-card-meta-label">Estado</span><span class="act-card-meta-value" style="color:' + estadoColor + ';">' + act.estado + '</span></div>'
+            +   '<div class="act-card-meta-item"><span class="act-card-meta-label">Responsable</span><span class="act-card-meta-value">' + respNombre + '</span></div>'
+            +   '<div class="act-card-meta-item"><span class="act-card-meta-label">F. Inicio</span><span class="act-card-meta-value">' + fechaInicio + '</span></div>'
+            +   '<div class="act-card-meta-item"><span class="act-card-meta-label">F. Fin</span><span class="act-card-meta-value" style="' + (esVencida ? 'color:#f1624d;' : '') + '">' + fechaFin + (esVencida ? ' ⚠️' : '') + '</span></div>'
+            +   (proyNombre ? '<div class="act-card-meta-item" style="grid-column:1/-1;"><span class="act-card-meta-label">Proyecto</span><span class="act-card-meta-value">' + proyNombre + '</span></div>' : '')
+            + '</div>'
+            + '<div class="act-card-progress">'
+            +   '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);">'
+            +     '<span>Avance</span><span style="font-weight:700;color:' + avanceColor + ';">' + avancePct + '%</span>'
+            +   '</div>'
+            +   '<div class="act-card-progress-bar"><div class="act-card-progress-fill" style="width:' + avancePct + '%;background:' + avanceColor + ';"></div></div>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+      }
+
+      function abrirDetalleCard(id) {
+        var act = actividadesData.filter(function(a){ return a.id === id; })[0];
+        if (!act) return;
+
+        var tipoNorm = (act.tipo || '').trim().toLowerCase();
+        var headerColor = tipoNorm === 'urgente' ? 'linear-gradient(135deg,#ff4c00,#ff6b2b)'
+          : tipoNorm === 'emergente' ? 'linear-gradient(135deg,#e74c3c,#c0392b)'
+          : 'linear-gradient(135deg,var(--primary),var(--secondary))';
+
+        document.getElementById('modalDetalleCardHeader').style.background = headerColor;
+        document.getElementById('modalDetalleCardTitulo').textContent = act.titulo;
+
+        var todos = [].concat(usuariosColaboradores, usuariosJefes, usuariosGerentes);
+        var userEnc = todos.filter(function(u){ return u.email === act.responsable; })[0];
+        var respNombre = userEnc ? userEnc.nombre : (act.responsable || '-');
+        var fechaFin = act.fechaFin ? new Date(act.fechaFin).toLocaleString('es-ES') : '-';
+        var fechaInicio = act.fechaInicio ? new Date(act.fechaInicio).toLocaleString('es-ES') : '-';
+        var proyNombre = '';
+        if (act.proyectoId && proyectosGlobal.length) {
+          var proy = proyectosGlobal.filter(function(p){ return p.id === act.proyectoId; })[0];
+          if (proy) proyNombre = proy.nombre;
+        }
+        var avancePct = Math.min(100, Math.max(0, parseInt(act.avance) || 0));
+
+        document.getElementById('modalDetalleCardBody').innerHTML =
+          '<div style="display:flex;flex-direction:column;gap:12px;">'
+          + '<div style="background:var(--surface-alt);border-radius:8px;padding:12px;">'
+          +   '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">DESCRIPCIÓN</div>'
+          +   '<div style="font-size:13px;">' + (act.descripcion || 'Sin descripción') + '</div>'
+          + '</div>'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+          +   _cardDetailItem('Estado', act.estado)
+          +   _cardDetailItem('Prioridad', act.prioridad)
+          +   _cardDetailItem('Responsable', respNombre)
+          +   _cardDetailItem('Proyecto', proyNombre || 'Sin proyecto')
+          +   _cardDetailItem('F. Inicio', fechaInicio)
+          +   _cardDetailItem('F. Fin', fechaFin)
+          +   _cardDetailItem('Avance', avancePct + '%')
+          +   _cardDetailItem('Tipo', act.tipo || 'Normal')
+          + '</div>'
+          + '</div>';
+
+        // Footer actions
+        // Mismas acciones que la tabla, por rol
+        var rol = usuarioActual ? usuarioActual.rol : '';
+        var isEmergEnEjecucion = (tipoNorm === 'emergente' || tipoNorm === 'urgente') && act.estado === 'En Ejecuci\u00f3n';
+        var canEdit   = rol !== 'Colaborador';
+        var canDelete = rol !== 'Colaborador';
+
+        // Cronómetro en card (si emergente en ejecución)
+        var cronHtml = isEmergEnEjecucion
+          ? '<span class="cronometro-badge" data-cronometro="' + act.id + '" style="display:block;margin-bottom:8px;">00:00:00</span>'
+          : '';
+        document.getElementById('modalDetalleCardBody').insertAdjacentHTML('afterbegin', cronHtml);
+
+        // Botón Ver detalle (siempre)
+        var footer = '<button class="act-card-btn act-card-btn-primary" onclick="verDetalle(\'' + act.id + '\');cerrarModal(\'modalDetalleCard\')">&#x1F441;&#xFE0F; Ver</button>';
+
+        // Botón Completar emergente (si aplica) — reemplaza Editar
+        if (isEmergEnEjecucion) {
+          footer += '<button class="act-card-btn act-card-btn-primary" style="background:#27ae60;" onclick="completarEmergente(\'' + act.id + '\');cerrarModal(\'modalDetalleCard\')">&#x2705; Completar</button>';
+        } else if (canEdit) {
+          footer += '<button class="act-card-btn act-card-btn-ghost" onclick="editarActividad(\'' + act.id + '\');cerrarModal(\'modalDetalleCard\')">&#x270F;&#xFE0F; Editar</button>';
+        }
+
+        // Botón Eliminar (no Colaborador)
+        if (canDelete) {
+          footer += '<button class="act-card-btn act-card-btn-danger" onclick="eliminarActividad(\'' + act.id + '\');cerrarModal(\'modalDetalleCard\')">&#x1F5D1;&#xFE0F; Eliminar</button>';
+        }
+
+        // Cerrar siempre al final
+        footer += '<button class="act-card-btn act-card-btn-ghost" onclick="cerrarModal(\'modalDetalleCard\')">Cerrar</button>';
+
+        document.getElementById('modalDetalleCardFooter').innerHTML = footer;
+
+        // Iniciar cronómetro si aplica
+        if (isEmergEnEjecucion && act.fechaAceptacion) {
+          setTimeout(function() { iniciarCronometro(act.id, act.fechaAceptacion); }, 50);
+        }
+        document.getElementById('modalDetalleCard').classList.add('active');
+      }
+
+      function _cardDetailItem(label, value) {
+        return '<div style="background:var(--surface-alt);border-radius:8px;padding:10px;">'
+          + '<div style="font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">' + label + '</div>'
+          + '<div style="font-size:13px;font-weight:600;">' + (value || '-') + '</div>'
+          + '</div>';
+      }
+      // ─── END MOBILE CARDS ──────────────────────────────────
 
       function cambiarPagina(pagina) {
         const totalPaginas = Math.ceil(actividadesMostradas.length / ITEMS_POR_PAGINA);
@@ -2177,8 +2450,8 @@
 // FUNCIONES PARA PROYECTOS
 // ============================================
 
-let proyectosData = [];
-let proyectoSeleccionado = null;
+if (typeof proyectosData === "undefined") var proyectosData = [];
+if (typeof proyectoSeleccionado === "undefined") var proyectoSeleccionado = null;
 
 /**
  * Muestra u oculta el botón de proyectos según el rol
@@ -2713,21 +2986,68 @@ function abrirModalActividadEmergente() {
   
   console.log('Abriendo modal actividad emergente');
   
-  // Llenar jefes
-  const selectJefe = document.getElementById('emerJefe');
+  // Llenar jefes en select supervisor
+  var selectJefe = document.getElementById('emerJefe');
   selectJefe.innerHTML = '<option value="">Sin jefe asignado</option>';
   usuariosJefes.forEach(function(jefe) {
     selectJefe.innerHTML += '<option value="' + jefe.email + '">' + jefe.nombre + '</option>';
   });
   
+  // Llenar panel de jefaturas
+  var jefCont = document.getElementById('jefaturasEmerContainer');
+  if (jefCont) {
+    var jefHtml = '';
+    usuariosJefes.forEach(function(jefe) {
+      var safeEmail = jefe.email.replace(/"/g, '&quot;');
+      var safeNombre = jefe.nombre.replace(/"/g, '&quot;');
+      jefHtml += '<label class="emer-check-card" style="display:block;cursor:pointer;padding:10px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;transition:background 0.15s;">'
+        + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<input type="checkbox" class="emer-responsable-cb" data-email="' + safeEmail + '" data-nombre="' + safeNombre + '" onchange="actualizarSeleccionEmer()" style="width:16px;height:16px;cursor:pointer;">'
+        + '<div style="flex:1;"><strong>' + jefe.nombre + '</strong><br>'
+        + '<small style="color:var(--text-secondary);">' + jefe.email + '</small></div>'
+        + '<span style="font-size:18px;">🏢</span>'
+        + '</div></label>';
+    });
+    jefCont.innerHTML = jefHtml || '<p style="color:var(--text-secondary);text-align:center;padding:20px;">No hay jefaturas disponibles</p>';
+  }
+  
+  // Reset tab to colaboradores
+  switchEmerTab('colab');
+  
+  // Limpiar selección anterior — desmarcar todos los checkboxes
+  document.querySelectorAll('.emer-responsable-cb').forEach(function(cb) { cb.checked = false; });
+  actualizarSeleccionEmer();
+  
   // Establecer fecha por defecto (en 4 horas)
-  const ahora = new Date();
-  const enCuatroHoras = new Date(ahora.getTime() + 4 * 60 * 60 * 1000);
+  var ahora = new Date();
+  var enCuatroHoras = new Date(ahora.getTime() + 4 * 60 * 60 * 1000);
   document.getElementById('emerFechaFin').value = formatearFechaParaInput(enCuatroHoras);
   
   // Abrir modal y cargar análisis
   document.getElementById('modalActividadEmergente').classList.add('active');
   cargarAnalisisCarga();
+}
+
+function switchEmerTab(tab) {
+  var panelColab = document.getElementById('panelEmerColab');
+  var panelJefe = document.getElementById('panelEmerJefe');
+  var btnColab = document.getElementById('tabColabBtn');
+  var btnJefe = document.getElementById('tabJefeBtn');
+  if (tab === 'colab') {
+    panelColab.style.display = 'block';
+    panelJefe.style.display = 'none';
+    btnColab.style.background = 'var(--primary)';
+    btnColab.style.color = 'white';
+    btnJefe.style.background = 'var(--surface-alt)';
+    btnJefe.style.color = 'var(--text)';
+  } else {
+    panelColab.style.display = 'none';
+    panelJefe.style.display = 'block';
+    btnJefe.style.background = 'var(--primary)';
+    btnJefe.style.color = 'white';
+    btnColab.style.background = 'var(--surface-alt)';
+    btnColab.style.color = 'var(--text)';
+  }
 }
 
 function cargarAnalisisCarga() {
@@ -2750,111 +3070,124 @@ function cargarAnalisisCarga() {
 }
 
 function renderizarAnalisisCarga(colaboradores) {
-  const container = document.getElementById('analisisCargaContainer');
+  var container = document.getElementById('analisisCargaContainer');
   
   if (colaboradores.length === 0) {
     container.innerHTML = '<p>No hay colaboradores disponibles</p>';
     return;
   }
   
-  let html = '';
-  
+  var html = '';
   colaboradores.forEach(function(col) {
-    const c = col.carga;
-    const colorTexto = c.color === 'verde' ? '#27ae60' : (c.color === 'amarillo' ? '#f39c12' : '#e74c3c');
-    
-    html += '<div class="carga-colaborador-card ' + c.color + '" onclick="seleccionarColaborador(\'' + col.email + '\', \'' + col.nombre + '\')">';
-    html += '  <div style="display: flex; justify-content: space-between; align-items: center;">';
-    html += '    <div>';
-    html += '      <strong>' + col.nombre + '</strong><br>';
-    html += '      <small style="color: #7f8c8d;">' + col.email + '</small>';
-    html += '    </div>';
-    html += '    <div style="text-align: right;">';
-    html += '      <div>';
-    html += '        <span class="semaforo ' + c.color + '"></span>';
-    html += '        <strong style="color: ' + colorTexto + '">' + c.disponibilidad + '</strong>';
-    html += '      </div>';
-    html += '      <small style="color: #7f8c8d;">Carga: ' + c.nivel + '</small>';
-    html += '    </div>';
-    html += '  </div>';
-    html += '  <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ecf0f1; font-size: 12px; color: #7f8c8d;">';
-    html += '    📋 ' + c.totalActividades + ' actividades activas | ';
-    html += '    🚨 ' + c.actividadesEmergentes + ' emergentes | ';
-    html += '    ⏱️ ~' + c.horasEstimadas + 'h pendientes';
-    html += '  </div>';
-    html += '</div>';
+    var c = col.carga;
+    var colorTexto = c.color === 'verde' ? '#27ae60' : (c.color === 'amarillo' ? '#f39c12' : '#e74c3c');
+    var safeEmail = col.email.replace(/"/g, '&quot;');
+    html += '<label class="emer-check-card" style="display:block;cursor:pointer;padding:10px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;transition:background 0.15s;">'
+      + '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<input type="checkbox" class="emer-responsable-cb" data-email="' + safeEmail + '" data-nombre="' + col.nombre.replace(/"/g, '&quot;') + '" onchange="actualizarSeleccionEmer()" style="width:16px;height:16px;cursor:pointer;">'
+      + '<div style="flex:1;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+      + '<strong>' + col.nombre + '</strong>'
+      + '<span><span class="semaforo ' + c.color + '"></span> <strong style="color:' + colorTexto + ';font-size:12px;">' + c.disponibilidad + '</strong></span>'
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">📋 ' + c.totalActividades + ' activas &nbsp;🚨 ' + c.actividadesEmergentes + ' emerg. &nbsp;⏱️ ~' + c.horasEstimadas + 'h</div>'
+      + '</div></div></label>';
   });
-  
   container.innerHTML = html;
 }
 
-function seleccionarColaborador(email, nombre) {
-  console.log('Seleccionando colaborador:', nombre, email);
-  
-  // Remover selección anterior
-  const cards = document.querySelectorAll('.carga-colaborador-card');
-  cards.forEach(function(card) {
-    card.classList.remove('selected');
-  });
-  
-  // Marcar como seleccionado
-  event.currentTarget.classList.add('selected');
-  
-  // Guardar en campo oculto
-  document.getElementById('emerResponsable').value = email;
+
+function actualizarSeleccionEmer() {
+  var checked = document.querySelectorAll('.emer-responsable-cb:checked');
+  var count = checked.length;
+  var countEl = document.getElementById('emerSelCount');
+  if (countEl) {
+    countEl.textContent = count === 0 ? '(ninguno seleccionado)' : '(' + count + ' seleccionado' + (count > 1 ? 's' : '') + ')';
+    countEl.style.color = count > 0 ? '#27ae60' : 'var(--text-secondary)';
+  }
 }
 
+
 function crearActividadEmergente() {
-  const tipoSeleccionado = document.querySelector('input[name="emerTipo"]:checked');
+  var tipoSeleccionado = document.querySelector('input[name="emerTipo"]:checked');
   if (!tipoSeleccionado) {
     alert('Por favor selecciona el tipo de actividad (Urgente o Emergente)');
     return;
   }
 
-  const datos = {
-    titulo: document.getElementById('emerTitulo').value,
-    descripcion: document.getElementById('emerDescripcion').value,
-    responsable: document.getElementById('emerResponsable').value,
-    jefe: document.getElementById('emerJefe').value,
-    fechaInicio: new Date().toISOString(),
-    fechaFin: document.getElementById('emerFechaFin').value,
-    tipo: tipoSeleccionado.value,
-    noEnviarEmail: true
-  };
-  
-  // Validación
-  if (!datos.titulo || !datos.descripcion || !datos.responsable || !datos.fechaFin) {
+  // Recoger todos los responsables seleccionados (colaboradores + jefaturas)
+  var checkedBoxes = document.querySelectorAll('.emer-responsable-cb:checked');
+  var responsables = [];
+  checkedBoxes.forEach(function(cb) {
+    responsables.push({ email: cb.dataset.email, nombre: cb.dataset.nombre });
+  });
+
+  if (responsables.length === 0) {
+    alert('Por favor selecciona al menos un responsable');
+    return;
+  }
+
+  var titulo = document.getElementById('emerTitulo').value;
+  var descripcion = document.getElementById('emerDescripcion').value;
+  var fechaFin = document.getElementById('emerFechaFin').value;
+  var jefe = document.getElementById('emerJefe').value;
+
+  if (!titulo || !descripcion || !fechaFin) {
     alert('Por favor completa todos los campos obligatorios');
     return;
   }
-  
-  console.log('Creando actividad emergente:', datos);
+
+  console.log('Creando actividades emergentes para:', responsables);
   mostrarLoading(true);
-  
-  google.script.run
-    .withSuccessHandler(function(resultado) {
-      mostrarLoading(false);
-      if (resultado.success) {
-        alert('✅ ' + resultado.message);
-        cerrarModal('modalActividadEmergente');
-        
-        // Limpiar formulario
-        document.getElementById('formActividadEmergente').reset();
-        document.getElementById('emerResponsable').value = '';
-        // Resetear selección visual de tipo
-        document.getElementById('tipoUrgenteLbl').style.borderColor = 'var(--border)';
-        document.getElementById('tipoEmergenteLbl').style.borderColor = 'var(--border)';
-        
-        // Recargar actividades
-        cargarActividades();
-      }
-    })
-    .withFailureHandler(function(error) {
-      mostrarLoading(false);
-      alert('❌ Error: ' + (error.message || error));
-    })
-    .crearActividadEmergente(datos);
+
+  // Crear una actividad por cada responsable seleccionado
+  var pendientes = responsables.length;
+  var errores = [];
+
+  responsables.forEach(function(resp) {
+    var datos = {
+      titulo: titulo,
+      descripcion: descripcion,
+      responsable: resp.email,
+      jefe: jefe,
+      fechaInicio: new Date().toISOString(),
+      fechaFin: fechaFin,
+      tipo: tipoSeleccionado.value,
+      noEnviarEmail: true
+    };
+
+    google.script.run
+      .withSuccessHandler(function(resultado) {
+        pendientes--;
+        if (!resultado.success) errores.push(resp.nombre + ': ' + resultado.message);
+        if (pendientes === 0) {
+          mostrarLoading(false);
+          if (errores.length > 0) {
+            alert('Algunos errores: ' + errores.join(', '));
+          } else {
+            alert('Actividad creada para ' + responsables.length + ' responsable' + (responsables.length > 1 ? 's' : ''));
+          }
+          cerrarModal('modalActividadEmergente');
+          document.getElementById('formActividadEmergente').reset();
+          document.querySelectorAll('.emer-responsable-cb').forEach(function(cb) { cb.checked = false; });
+          actualizarSeleccionEmer();
+          document.getElementById('tipoUrgenteLbl').style.borderColor = 'var(--border)';
+          document.getElementById('tipoEmergenteLbl').style.borderColor = 'var(--border)';
+          cargarActividades();
+        }
+      })
+      .withFailureHandler(function(error) {
+        pendientes--;
+        errores.push(resp.nombre + ': ' + (error.message || error));
+        if (pendientes === 0) {
+          mostrarLoading(false);
+          alert('Errores al crear actividades: ' + errores.join(', '));
+        }
+      })
+      .crearActividadEmergente(datos);
+  });
 }
+
 
 function verificarActividadesEmergentes() {
   if (usuarioActual.rol !== 'Colaborador') return;

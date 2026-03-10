@@ -12,6 +12,12 @@
     box-sizing: border-box;
   }
 
+  /* Scroll suave global + mejor experiencia táctil en móvil */
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   /* ── VARIABLES DE TEMA ── */
   :root[data-theme="light"] {
     --primary: #ff4c00;
@@ -37,6 +43,9 @@
     --progress-warning: #f1624d;
     --progress-success: #04aa6d;
     --progress-complete: #09b2a1;
+
+    /* Modal overlay */
+    --modal-overlay: rgba(0, 0, 0, 0.5);
   }
 
   :root[data-theme="dark"],
@@ -64,6 +73,9 @@
     --progress-warning: #f1624d;
     --progress-success: #04aa6d;
     --progress-complete: #09b2a1;
+
+    /* Modal overlay */
+    --modal-overlay: rgba(0, 0, 0, 0.7);
   }
 
   /* ── TIPOGRAFÍA BASE ── */
@@ -139,4 +151,12 @@
   .theme-toggle:hover {
     transform: scale(1.1);
   }
+
+  /* ── UTILIDADES GENERALES ── */
+  .text-muted   { color: var(--text-secondary); }
+  .text-center  { text-align: center; }
+  .d-none       { display: none !important; }
+  .d-flex       { display: flex; }
+  .w-100        { width: 100%; }
+
 </style>

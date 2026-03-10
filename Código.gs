@@ -3049,13 +3049,13 @@ function crearActividadEmergente(datos) {
       datos.jefe || '',                      // F: Jefe
       usuario.email,                         // G: Gerente (quien la crea)
       'Pendiente de Aceptación',            // H: Estado
-      'Emergente',                          // I: Prioridad (todas emergentes son prioridad emergente)
+      datos.tipo || 'Emergente',             // I: Prioridad (Urgente o Emergente)
       new Date(datos.fechaInicio),          // J: FechaInicio
       new Date(datos.fechaFin),             // K: FechaFin
       ahora,                                // L: FechaCreacion
       ahora,                                // M: UltimaActualizacion
       0,                                    // N: Avance
-      'Emergente',                          // O: Tipo ← NUEVO
+      datos.tipo || 'Emergente',             // O: Tipo (Urgente o Emergente)
       '',                                   // P: FechaAceptacion ← NUEVO
       0                                     // Q: TiempoEjecucion (segundos) ← NUEVO
     ];

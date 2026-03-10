@@ -25,6 +25,32 @@
     box-shadow: 0 6px 24px rgba(255, 76, 0, 0.5);
   }
 
+  /* Botón toggle de vista (desktop ↔ mobile cards) */
+  .view-toggle {
+    position: fixed;
+    bottom: 30px;
+    right: 98px;           /* justo a la izquierda del theme-toggle */
+    background: var(--surface-alt);
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 2px 8px var(--shadow-strong);
+  }
+
+  .view-toggle:hover {
+    transform: scale(1.1);
+    border-color: var(--primary);
+    box-shadow: 0 4px 16px var(--shadow);
+  }
+
   /* ══════════════════════════════════════════════════════════
      HEADER
   ══════════════════════════════════════════════════════════ */
@@ -544,7 +570,7 @@
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: rgba(0,0,0,.6);
+    background: var(--modal-overlay, rgba(0,0,0,.6));
     z-index: 1000;
     align-items: center;
     justify-content: center;
@@ -956,47 +982,452 @@
   .checkbox-item input[type="checkbox"] { margin-right: 10px; cursor: pointer; }
   .checkbox-item label { cursor: pointer; font-size: 14px; flex: 1; }
 
+
+  /* ── LOGO ── */
+  .logo-img { height: 40px; width: auto; margin-right: 12px; }
+
+  /* ── FORM HELPERS ── */
+  .form-hint { color: var(--text-secondary); font-size: 12px; }
+  .form-label-optional { font-weight: 400; opacity: 0.7; }
+
+  /* ── INFO BANNERS ── */
+  .info-banner-primary {
+    background: rgba(255,76,0,0.08);
+    border-left: 3px solid var(--primary);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+  .aviso-pausa {
+    background: transparent;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #f39c12;
+  }
+  .aviso-pausa-text { margin: 8px 0 0 0; font-size: 13px; }
+  .pausa-footer-info {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid var(--border);
+  }
+  .pausa-footer-text {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
   /* ══════════════════════════════════════════════════════════
-     RESPONSIVE
+     MOBILE ACTIVITY CARDS
+     Vista de tarjetas para pantallas móviles (< 768px).
+     #vistaTabla se oculta y #vistaCards toma su lugar.
   ══════════════════════════════════════════════════════════ */
 
-  /* Desktop Large (1400px+) */
-  @media (min-width: 1400px) {
-    .container { max-width: 1600px; }
-    .stats-grid { gap: 14px; }
-    .stat-card { min-width: 150px; }
+  .act-card {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 14px 14px 12px 20px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px var(--shadow-strong);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .act-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 4px var(--shadow-strong);
   }
 
-  /* Tablet Landscape (768px - 1023px) */
-  @media (min-width: 768px) and (max-width: 1023px) {
-    .container { padding: 20px 15px; }
-    .logo-text { font-size: 16px; }
-    .stat-value { font-size: 20px; }
-    .stat-card { min-width: 110px; padding: 8px 12px; }
-    table { font-size: 11px; }
-    th, td { padding: 8px; }
+  /* Barra de color izquierda (indica prioridad) */
+  .act-card-accent {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 5px;
+    border-radius: 14px 0 0 14px;
   }
 
-  /* Mobile Large (480px - 767px) */
-  @media (max-width: 767px) {
-    .stats-grid { gap: 6px; }
-    .stat-card { min-width: 90px; padding: 7px 10px; }
-    .stat-value { font-size: 18px; }
-    .stat-label { font-size: 9px; }
-    .header-content { height: 52px; }
-    .user-info { display: none; }
-    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { min-width: 700px; font-size: 11px; }
-    th, td { padding: 7px 8px; }
-    .theme-toggle { width: 48px; height: 48px; bottom: 20px; right: 20px; }
+  .act-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .act-card-titulo {
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--text);
+    flex: 1;
+  }
+  .act-card-badges {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-shrink: 0;
   }
 
-  /* Mobile Small (< 480px) */
-  @media (max-width: 479px) {
-    .header { padding: 0 12px; }
-    .logo-text { font-size: 12px; }
-    .logo-separator, .logo-brand { display: none; }
-    .stat-value { font-size: 16px; }
-    .theme-toggle { width: 44px; height: 44px; bottom: 16px; right: 16px; }
+  /* Metadatos: grid 2 columnas */
+  .act-card-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    margin-bottom: 10px;
   }
+  .act-card-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .act-card-meta-full {
+    grid-column: 1 / -1;
+  }
+  .act-card-meta-label {
+    font-size: 9px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+  }
+  .act-card-meta-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Barra de progreso en card */
+  .act-card-progress { margin-top: 8px; }
+  .act-card-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .act-card-progress-label {
+    font-size: 9px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  .act-card-progress-value {
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .act-card-progress-bar {
+    height: 5px;
+    background: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .act-card-progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+  }
+
+  /* Estado vencida */
+  .act-card-vencida {
+    border-color: rgba(241, 98, 77, 0.35);
+    background: rgba(241, 98, 77, 0.03);
+  }
+
+  /* Estado vacío */
+  .cards-empty {
+    text-align: center;
+    padding: 52px 20px;
+    color: var(--text-secondary);
+  }
+  .cards-empty-icon { font-size: 52px; margin-bottom: 12px; }
+
+  /* Botones de acción dentro del modal de detalle */
+  .act-card-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .act-card-btn:active { transform: scale(0.97); }
+  .act-card-btn-primary { background: var(--primary); color: #fff; }
+  .act-card-btn-ghost   { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
+  .act-card-btn-danger  { background: rgba(241,98,77,0.12); color: #f1624d; border: 1px solid rgba(241,98,77,0.3); }
+
+  /* Footer del modal de detalle */
+  #modalDetalleCard .modal-footer {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     RESPONSIVE — NOTA IMPORTANTE
+     GAS sirve el HTML dentro de un iframe. Los media queries
+     CSS no disparan de forma confiable porque el viewport del
+     iframe no corresponde al dispositivo.
+     El cambio tabla ↔ cards se maneja 100% por JS
+     (función actualizarVistaResponsiva en dashboard.html).
+     Aquí solo se definen los estados visuales de cada modo.
+  ══════════════════════════════════════════════════════════ */
+
+  /* Estado inicial: tabla visible, cards oculto.
+     JS sobreescribe con .style.display según ancho real. */
+  #vistaTabla { display: block; }
+  #vistaCards { display: none; }
+
+  /* Modo mobile — clase aplicada por JS al <body> */
+  body.modo-mobile .user-info       { display: none; }
+  body.modo-mobile .header-content  { height: 52px; }
+  body.modo-mobile .stats-grid      { gap: 6px; }
+  body.modo-mobile .stat-card       { min-width: 90px; padding: 7px 10px; }
+  body.modo-mobile .stat-value      { font-size: 18px; }
+  body.modo-mobile .stat-label      { font-size: 9px; }
+  body.modo-mobile .theme-toggle    { width: 48px; height: 48px; bottom: 20px; right: 20px; }
+  body.modo-mobile .btn             { padding: 8px 14px; font-size: 13px; }
+  body.modo-mobile .filters         {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+  }
+  body.modo-mobile .filters::-webkit-scrollbar { display: none; }
+  body.modo-mobile .filter-select   { min-width: 128px; flex-shrink: 0; font-size: 12px; padding: 6px 8px; }
+  body.modo-mobile .modal           { align-items: flex-end; }
+  body.modo-mobile .modal-content   {
+    margin: 0;
+    border-radius: 20px 20px 0 0;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+    max-width: 100% !important;
+  }
+  body.modo-mobile .act-card-meta   { grid-template-columns: 1fr 1fr; }
+
+  /* Pantalla muy pequeña */
+  body.modo-mobile-xs .act-card-meta { grid-template-columns: 1fr; }
+  body.modo-mobile-xs .logo-separator,
+  body.modo-mobile-xs .logo-brand    { display: none; }
+  body.modo-mobile-xs .logo-text     { font-size: 12px; }
+  body.modo-mobile-xs .header        { padding: 0 12px; }
+  body.modo-mobile-xs .stat-value    { font-size: 16px; }
+
+  /* ══════════════════════════════════════════════════════════
+     UTILITY CLASSES — extracted from inline styles
+  ══════════════════════════════════════════════════════════ */
+
+  /* Actions bar: botones sobre la tabla */
+  .actions-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Paginación container */
+  .paginacion-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .paginacion-info {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .paginacion-botones {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* Sortable table headers */
+  th.sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+  th.sortable:hover { background: var(--surface-alt); }
+
+  /* Botón emergente en barra de acciones */
+  .btn-emergente {
+    background: #e74c3c;
+    color: white;
+  }
+  .btn-emergente:hover { background: #c0392b; }
+
+  /* Aviso alta prioridad (banner en modal emergente) */
+  .aviso-alta-prioridad {
+    background: transparent;
+    border-left: 4px solid #ffc107;
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+  .aviso-alta-prioridad p {
+    margin: 5px 0 0 0;
+    font-size: 13px;
+  }
+
+  /* Selector de tipo (Urgente / Emergente) */
+  .tipo-selector {
+    display: flex;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .tipo-selector-item {
+    flex: 1;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .tipo-selector-item:hover {
+    border-color: var(--primary);
+  }
+  .tipo-selector-item.activo-urgente {
+    border-color: #ff4c00;
+    background: rgba(255,76,0,0.06);
+  }
+  .tipo-selector-item.activo-emergente {
+    border-color: #e74c3c;
+    background: rgba(231,76,60,0.06);
+  }
+  .tipo-selector-icon { font-size: 24px; }
+  .tipo-selector-label-urgente  { font-weight: 700; color: #ff4c00; }
+  .tipo-selector-label-emergente{ font-weight: 700; color: #e74c3c; }
+  .tipo-selector-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .tipo-selector-item input[type="radio"] { display: none; }
+
+  /* Tabs de responsables en modal emergente */
+  .emer-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .emer-tab-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+  }
+  .emer-tab-btn-colab {
+    background: var(--primary);
+    color: white;
+    border-radius: 6px 0 0 0;
+    font-weight: 600;
+  }
+  .emer-tab-btn-jefe {
+    background: var(--surface-alt);
+    color: var(--text);
+    border-radius: 0 6px 0 0;
+  }
+  .emer-tab-btn.inactive {
+    background: var(--surface-alt);
+    color: var(--text);
+    font-weight: 400;
+  }
+
+  /* Cabecera del panel de carga */
+  .carga-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .carga-scroll-container {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  /* Selector de proyectos (modal cambiar proyecto) */
+  .select-proyecto { font-size: 14px; }
+
+  /* Indicadores de nueva actividad y tipo (tabla + cards) */
+  .badge-nueva {
+    display: inline-block;
+    width: 7px; height: 7px;
+    background: #27ae60;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .badge-tipo-urgente  { font-size: 11px; color: #ff4c00; font-weight: 600; }
+  .badge-tipo-emergente{ font-size: 11px; color: #e67e22; font-weight: 600; }
+
+  /* Filas vencidas / con atraso en tabla */
+  .fila-vencida          { background: rgba(241,98,77,0.08); border-left: 3px solid #f1624d; }
+  .fila-completada-atraso{ background: rgba(242,150,56,0.08); border-left: 3px solid #f29638; }
+
+  /* Detalle de actividad en modal: grid info */
+  .detalle-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .detalle-descripcion {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .detalle-descripcion-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .detalle-descripcion-text { font-size: 13px; }
+  .detalle-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .detalle-meta-item {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .detalle-meta-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+  }
+  .detalle-meta-value { font-size: 13px; font-weight: 600; }
+
+  /* Modal Detalle Card: header con gradiente dinámico */
+  #modalDetalleCard .modal-header { color: #fff; }
+
+
 </style>
