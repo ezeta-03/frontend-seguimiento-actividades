@@ -155,6 +155,12 @@
     to   { transform: rotate(360deg); }
   }
 
+  @keyframes pulseBtn {
+    0%   { box-shadow: 0 4px 20px rgba(231,76,60,.55); transform: scale(1); }
+    50%  { box-shadow: 0 4px 28px rgba(231,76,60,.85); transform: scale(1.04); }
+    100% { box-shadow: 0 4px 20px rgba(231,76,60,.55); transform: scale(1); }
+  }
+
   @keyframes slideIn {
     from { transform: translateX(400px); opacity: 0; }
     to   { transform: translateX(0);     opacity: 1; }
@@ -330,7 +336,7 @@
   .gtable-head,
   .gtable-row {
     display: grid;
-    grid-template-columns: 28% 10% 9% 10% 8% 7% 10% 10% 8%;
+    grid-template-columns: 26% 9% 9% 10% 10% 7% 10% 10% 9%;
     align-items: center;
   }
 
@@ -605,8 +611,9 @@
   .progress-cell {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-width: 140px;
+    gap: 6px;
+    min-width: 0;
+    width: 100%;
   }
 
   .progress-bar-container {
@@ -626,11 +633,13 @@
   }
 
   .progress-text {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text);
-    min-width: 38px;
+    min-width: 30px;
+    white-space: nowrap;
     text-align: right;
+    flex-shrink: 0;
   }
 
   .progress-container {
@@ -1190,6 +1199,26 @@
     user-select: none;
     -webkit-user-select: none;
   }
+  /* Botón eliminar en la card */
+  .act-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    margin-top: 6px;
+  }
+  .act-card-del-btn {
+    background: none;
+    border: 1px solid #f1624d;
+    color: #f1624d;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .act-card-del-btn:active { background: rgba(241,98,77,.1); }
+
   .act-card:active {
     transform: scale(0.97);
     box-shadow: 0 1px 4px var(--shadow-strong);
@@ -1323,6 +1352,38 @@
     gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  /* ══ Pantallas 1366×768 y similares ══ */
+  @media screen and (max-width: 1400px) {
+    /* Reducir container padding */
+    .container        { padding: 12px 16px; height: calc(100vh - 62px); }
+    /* Header más compacto */
+    .header-content   { height: 52px; }
+    /* Stats más pequeños */
+    .stats-grid       { margin-bottom: 10px; gap: 8px; }
+    .stat-card        { padding: 7px 14px; }
+    .stat-value       { font-size: 20px; }
+    .stat-label       { font-size: 10px; }
+    .stat-icon        { font-size: 18px; }
+    /* Filtros y acciones */
+    .actions-bar      { margin-bottom: 10px; gap: 8px; }
+    .filters          { gap: 6px; }
+    .filter-select    { padding: 6px 8px; font-size: 12px; }
+    .btn              { padding: 7px 14px; font-size: 13px; }
+    /* Tabla */
+    .gtable           { font-size: 12px; }
+    .gcol             { padding: 7px 5px; font-size: 10px; }
+    .gcell            { padding: 0 5px; }
+    .gtable-row,
+    .gtable-row-empty { height: 48px; min-height: 48px; max-height: 48px; }
+    #tablaActividades tbody { height: 336px; } /* 7 × 48px */
+    .badge, .badge-priority { font-size: 10px; padding: 2px 6px; }
+    .progress-bar-container { height: 5px; }
+    .progress-text    { font-size: 11px; min-width: 24px; }
+    .btn-icon         { font-size: 13px; padding: 2px 4px; }
+    /* Paginación */
+    .paginacion-container { margin-top: 8px; min-height: 44px; height: 44px; }
   }
 
   /* ══════════════════════════════════════════════════════════

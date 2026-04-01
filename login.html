@@ -6,8 +6,340 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Actividades - Login</title>
-  <?!= include('SharedStyles') ?>
-  <?!= include('LoginStyles') ?>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root[data-theme="light"] {
+      --primary: #ff4c00;
+      --secondary: #ff6b2b;
+      --background: #ffffff;
+      --surface: #ffffff;
+      --text: #000000;
+      --text-secondary: #666666;
+      --border: #e0e0e0;
+      --shadow: rgba(255, 76, 0, 0.1);
+      --shadow-strong: rgba(0, 0, 0, 0.1);
+    }
+
+    :root[data-theme="dark"],
+    :root:not([data-theme]) {
+      --primary: #ff4c00;
+      --secondary: #ff6b2b;
+      --background: #1c2532;
+      --surface: #252e3e;
+      --text: #ffffff;
+      --text-secondary: #b0b0b0;
+      --border: #3a4556;
+      --shadow: rgba(255, 76, 0, 0.2);
+      --shadow-strong: rgba(0, 0, 0, 0.3);
+    }
+
+    body {
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+        Cantarell, sans-serif;
+      background: var(--background);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      transition: background 0.3s ease;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 24px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px var(--shadow-strong);
+      z-index: 1000;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px var(--shadow-strong);
+    }
+
+    .login-container {
+      background: var(--surface);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px var(--shadow-strong);
+      max-width: 420px;
+      width: 100%;
+      padding: 50px 40px;
+      text-align: center;
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+    }
+
+    .logo {
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--primary);
+      border-radius: 50%;
+      box-shadow: 0 8px 24px var(--shadow);
+    }
+
+    .logo img {
+      width: 80%;
+      height: 80%;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+
+    h1 {
+      color: var(--text);
+      font-size: 28px;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 15px;
+      margin-bottom: 40px;
+      font-weight: 400;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 14px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .btn:hover {
+      background: var(--secondary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--shadow);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      background: var(--border);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .loading {
+      display: none;
+      margin-top: 20px;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .spinner {
+      border: 3px solid var(--border);
+      border-top: 3px solid var(--primary);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .info-box {
+      background: var(--background);
+      border-left: 4px solid var(--primary);
+      padding: 15px;
+      margin-top: 30px;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 13px;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--primary);
+    }
+
+    .info-box p {
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .debug-log {
+      background: #1e1e1e;
+      color: #00ff00;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 4px;
+      text-align: left;
+      font-family: "Courier New", monospace;
+      font-size: 11px;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .debug-log.active {
+      display: block;
+    }
+
+    .error-box {
+      background: rgba(222, 95, 125, 0.1);
+      border-left: 4px solid #de5f7d;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 13px;
+      color: #de5f7d;
+      display: none;
+      border: 1px solid rgba(222, 95, 125, 0.3);
+    }
+
+    .error-box.active {
+      display: block;
+    }
+
+    /* Tablet */
+    @media (min-width: 768px) and (max-width: 1023px) {
+      .login-container {
+        max-width: 480px;
+      }
+    }
+
+    /* Mobile Large */
+    @media (min-width: 480px) and (max-width: 767px) {
+      .login-container {
+        max-width: 400px;
+        padding: 45px 35px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      .logo {
+        width: 130px;
+        height: 130px;
+      }
+      
+      .theme-toggle {
+        width: 48px;
+        height: 48px;
+        font-size: 22px;
+      }
+    }
+
+    /* Mobile Small */
+    @media (max-width: 479px) {
+      body {
+        padding: 15px;
+      }
+
+      .login-container {
+        padding: 35px 25px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+        margin-bottom: 35px;
+      }
+
+      .logo {
+        width: 110px;
+        height: 110px;
+        margin-bottom: 25px;
+      }
+
+      .btn {
+        padding: 12px 24px;
+        font-size: 15px;
+      }
+
+      .info-box {
+        padding: 12px;
+        font-size: 12px;
+        margin-top: 25px;
+      }
+
+      .theme-toggle {
+        top: 15px;
+        right: 15px;
+        width: 44px;
+        height: 44px;
+        font-size: 20px;
+      }
+    }
+    
+    /* Landscape */
+    @media (max-height: 600px) and (orientation: landscape) {
+      .login-container {
+        padding: 30px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      
+      .logo {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 20px;
+      }
+      
+      h1 {
+        font-size: 22px;
+        margin-bottom: 6px;
+      }
+      
+      .subtitle {
+        font-size: 13px;
+        margin-bottom: 30px;
+      }
+      
+      .info-box {
+        margin-top: 20px;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -17,9 +349,9 @@
 
   <div class="login-container">
     <div class="logo">
-      <img src="https://www.zaazmago.com/canvas/wp-content/uploads/logo-zaaz-mago-001.svg" alt="ZaazMago Logo" />
+      <img src="https://www.zaazmago.com/canvas/wp-content/uploads/logo-zaaz-mago-001.svg" alt="Zaaz Mago Logo" />
     </div>
-    <h1>Sistema de Actividades <strong>v1.2</strong></h1>
+    <h1>Sistema de Actividades</h1>
     <p class="subtitle">Gestión y seguimiento de tareas</p>
     <button class="btn" id="btnLogin" onclick="iniciarSesion()">
       Iniciar Sesión con Google
@@ -30,28 +362,49 @@
       <p id="loadingText">Cargando tu perfil...</p>
     </div>
     <div class="error-box" id="errorBox"></div>
-  </div>
+
+    <div class="info-box">
+      <strong>Roles del sistema:</strong>
+      <p>
+        • <b>Gerencia:</b> Acceso completo<br />
+        • <b>Jefatura:</b> Gestión de equipo<br />
+        • <b>Colaborador:</b> Actividades propias
+      </p>
+    </div>
+
+    <!-- Botón notas de parche -->
+    <button onclick="document.getElementById('modalChangelog').style.display='flex'" style="margin-top:14px;width:100%;background:none;border:1px solid var(--border);border-radius:10px;padding:10px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--text);font-size:13px;transition:border-color .2s,color .2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:15px;">&#x1F4CB;</span>
+        <span>Notas del Parche <b>v1.4</b></span>
+      </span>
+      <span style="background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;flex-shrink:0;">VER</span>
+    </button>
+
+    </div>
 
   <script>
     let debugMode = false;
 
-    // ── SISTEMA DE TEMAS ──────────────────────────────────────
+    // Sistema de temas
     function toggleTheme() {
       const root = document.documentElement;
       const currentTheme = root.getAttribute('data-theme') || 'dark';
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
       root.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
-      document.getElementById('themeIcon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+      
+      document.getElementById('themeIcon').textContent = newTheme === 'dark' ? '🌙' : '☀️';
     }
 
-    window.addEventListener('DOMContentLoaded', function () {
+    // Cargar tema guardado
+    window.addEventListener('DOMContentLoaded', function() {
       const savedTheme = localStorage.getItem('theme') || 'dark';
       document.documentElement.setAttribute('data-theme', savedTheme);
-      document.getElementById('themeIcon').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+      document.getElementById('themeIcon').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
     });
 
-    // ── DEBUG ─────────────────────────────────────────────────
     function log(mensaje) {
       console.log(mensaje);
       if (debugMode) {
@@ -65,7 +418,6 @@
       }
     }
 
-    // ── MANEJO DE ERRORES ─────────────────────────────────────
     function mostrarError(mensaje) {
       const errorBox = document.getElementById("errorBox");
       if (errorBox) {
@@ -77,26 +429,24 @@
 
     function ocultarError() {
       const errorBox = document.getElementById("errorBox");
-      if (errorBox) errorBox.classList.remove("active");
+      if (errorBox) {
+        errorBox.classList.remove("active");
+      }
     }
 
-    // ── AUTENTICACIÓN ─────────────────────────────────────────
     function iniciarSesion() {
-      const btnLogin    = document.getElementById("btnLogin");
-      const loadingDiv  = document.getElementById("loading");
+      const btnLogin = document.getElementById("btnLogin");
+      const loadingDiv = document.getElementById("loading");
       const loadingText = document.getElementById("loadingText");
-
       btnLogin.disabled = true;
       loadingDiv.style.display = "block";
       loadingText.textContent = "Autenticando...";
       ocultarError();
       log("=== INICIANDO SESIÓN ===");
-
       google.script.run
         .withSuccessHandler(function (usuario) {
           log("✅ Respuesta recibida");
           log("Usuario: " + JSON.stringify(usuario));
-
           if (!usuario || !usuario.email) {
             log("❌ Usuario inválido");
             mostrarError("Error: Usuario inválido recibido del servidor");
@@ -104,40 +454,34 @@
             loadingDiv.style.display = "none";
             return;
           }
-
           log("Usuario válido: " + usuario.email + " (" + usuario.rol + ")");
-          usuario._ts = Date.now();
           localStorage.setItem("usuario", JSON.stringify(usuario));
-          loadingText.textContent = "&#x2713; Cargando dashboard...";
-          log("Cargando dashboard...");
-
+          log("Usuario guardado en localStorage");
+          loadingText.innerHTML = "&#x2713; Redirigiendo...";
+          log("Redirigiendo...");
           setTimeout(function () {
             google.script.run
-              .withSuccessHandler(function(html) {
+              .withSuccessHandler(function (html) {
                 document.open();
                 document.write(html);
                 document.close();
               })
-              .withFailureHandler(function(error) {
-                log("❌ Error: " + JSON.stringify(error));
-                mostrarError("Error al cargar: " + (error.message || error.toString()));
-                btnLogin.disabled = false;
-                loadingDiv.style.display = "none";
-              })
               .getDashboardHtml();
-          }, 400);
+          }, 800);
         })
         .withFailureHandler(function (error) {
           log("❌ Error en la llamada");
           log("Error: " + JSON.stringify(error));
-          mostrarError("Error de autenticación:\n\n" + (error.message || error.toString()));
+          mostrarError(
+            "Error de autenticación:\n\n" +
+            (error.message || error.toString()),
+          );
           btnLogin.disabled = false;
           loadingDiv.style.display = "none";
         })
         .loginUsuario();
     }
 
-    // ── INIT ──────────────────────────────────────────────────
     window.onload = function () {
       log("Página cargada");
       log("URL actual: " + window.location.href);
@@ -148,7 +492,121 @@
         log("No hay usuario en localStorage");
       }
     };
+
+    // Cerrar modal changelog al hacer clic en el fondo
+    document.getElementById('modalChangelog').addEventListener('click', function(e) {
+      if (e.target === this) this.style.display = 'none';
+    });
   </script>
+  <!-- MODAL CHANGELOG -->
+  <div id="modalChangelog" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:2000;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:480px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.4);">
+
+      <!-- Header -->
+      <div style="padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;">Sistema de Actividades</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:17px;font-weight:700;color:var(--text);">Notas de Parche</span>
+            <span style="background:var(--primary);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;">v1.4</span>
+          </div>
+        </div>
+        <button onclick="document.getElementById('modalChangelog').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-secondary);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">&#xD7;</button>
+      </div>
+
+      <!-- Body con scroll -->
+      <div style="overflow-y:auto;padding:16px 20px;flex:1;-webkit-overflow-scrolling:touch;">
+
+        <!-- v1.4 -->
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:13px;font-weight:700;color:var(--primary);">&#x1F527; Parche 1.4 &mdash; Interfaz &amp; Mobile</span>
+            <span style="font-size:10px;color:var(--text-secondary);margin-left:auto;">Mar 2026</span>
+          </div>
+          <div style="background:var(--background);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <ul style="margin:0;padding:0 0 0 14px;font-size:12px;color:var(--text-secondary);line-height:2;">
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Vista mobile con cards de actividades</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Bot&#xF3;n de cambio vista tabla &#x21C4; mobile</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Eliminar actividad desde vista mobile</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Colaboradores en modal emergente (popup)</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Nombre y cargo visible en header mobile</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Tabla con altura fija (CSS Grid, 7 registros)</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> T&#xED;tulos truncados con &#x2026; en 2 l&#xED;neas</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Paginaci&#xF3;n fija, sin redimensionamiento</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Modales con scroll y footer siempre visible</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Pantallas 1366&#xD7;768 &#x2014; vista compacta autom&#xE1;tica</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Scroll del fondo bloqueado al abrir modales</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- v1.3 -->
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:13px;font-weight:700;color:#27ae60;">&#x2705; Parche 1.3 &mdash; Proyectos &amp; Emergentes</span>
+            <span style="font-size:10px;color:var(--text-secondary);margin-left:auto;">Mar 2026</span>
+          </div>
+          <div style="background:var(--background);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <ul style="margin:0;padding:0 0 0 14px;font-size:12px;color:var(--text-secondary);line-height:2;">
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Modal de selecci&#xF3;n de colaboradores en proyectos</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Modal de responsables en actividad emergente</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Notificaci&#xF3;n emergente para Colaborador</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Flujo de pausas al aceptar actividad emergente</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Verificaci&#xF3;n de emergentes al completar carga</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Botones Cancelar / Guardar siempre visibles</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Progreso % visible en tabla junto a la barra</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- v1.2 -->
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:13px;font-weight:700;color:#3498db;">&#x1F504; Parche 1.2 &mdash; Filtros &amp; Paginaci&#xF3;n</span>
+            <span style="font-size:10px;color:var(--text-secondary);margin-left:auto;">Mar 2026</span>
+          </div>
+          <div style="background:var(--background);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <ul style="margin:0;padding:0 0 0 14px;font-size:12px;color:var(--text-secondary);line-height:2;">
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Filtro de proyecto para rol Colaborador</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Paginaci&#xF3;n &#x2014; 7 registros por p&#xE1;gina</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Columnas ordenables (clic en encabezado)</li>
+              <li><span style="color:#3498db;font-weight:700;">NUEVO</span> Filtro de rango de fechas</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Tipos Urgente / Emergente distinguibles</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Multi-selecci&#xF3;n de responsables en emergente</li>
+              <li><span style="color:#27ae60;font-weight:700;">FIX</span> Persistencia de tipo de actividad en C&#xF3;digo.gs</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- v1.1 -->
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:13px;font-weight:700;color:var(--text-secondary);">&#x1F4E6; Parche 1.1 &mdash; Base del sistema</span>
+            <span style="font-size:10px;color:var(--text-secondary);margin-left:auto;">Feb 2026</span>
+          </div>
+          <div style="background:var(--background);border:1px solid var(--border);border-radius:8px;padding:12px 14px;opacity:.8;">
+            <ul style="margin:0;padding:0 0 0 14px;font-size:12px;color:var(--text-secondary);line-height:2;">
+              <li>Dashboard con estad&#xED;sticas en tiempo real</li>
+              <li>Gesti&#xF3;n de actividades (CRUD completo)</li>
+              <li>Gesti&#xF3;n de proyectos con carga de trabajo</li>
+              <li>Actividades emergentes con cron&#xF3;metro</li>
+              <li>Roles: Gerencia, Jefatura, Colaborador</li>
+              <li>Modo oscuro / claro</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:12px 20px;border-top:1px solid var(--border);flex-shrink:0;text-align:right;">
+        <button onclick="document.getElementById('modalChangelog').style.display='none'" style="background:var(--primary);color:#fff;border:none;padding:8px 22px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
+
+
 </body>
 
 </html>

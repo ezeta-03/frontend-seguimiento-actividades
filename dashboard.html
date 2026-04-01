@@ -43,6 +43,8 @@
     </div>
   </header>
 
+
+
   <!-- CONTAINER -->
   <div class="container">
     <!-- STATS -->
@@ -1159,6 +1161,10 @@
       actualizarFiltroProyectos(proyectosGlobal);
       configurarAccesoProyectos();
       mostrarLoading(false);
+      // Verificar emergentes una vez que TODO está listo
+      if (usuarioActual && usuarioActual.rol === 'Colaborador') {
+        setTimeout(verificarActividadesEmergentes, 1500);
+      }
     }
   }
 
@@ -1598,6 +1604,7 @@
             +   '</div>'
             +   '<div class="act-card-progress-bar"><div class="act-card-progress-fill" style="width:' + avancePct + '%;background:' + avanceColor + ';"></div></div>'
             + '</div>'
+            + (usuarioActual && usuarioActual.rol !== 'Colaborador' ? '<div class="act-card-actions"><button class="act-card-del-btn" onclick="event.stopPropagation();eliminarActividad(\'' + act.id + '\')">&#x1F5D1;&#xFE0F; Eliminar</button></div>' : '')
             + '</div>'
             + '</div>';
         }).join('');
@@ -3269,13 +3276,18 @@ function crearActividadEmergente() {
 
 
 function verificarActividadesEmergentes() {
-  if (usuarioActual.rol !== 'Colaborador') return;
+  console.log('verificarActividadesEmergentes ejecutado, rol:', usuarioActual ? usuarioActual.rol : 'null');
+  if (!usuarioActual || usuarioActual.rol !== 'Colaborador') return;
   
+  console.log('Consultando actividades emergentes para:', usuarioActual.email);
   google.script.run
     .withSuccessHandler(function(emergentes) {
+      console.log('Respuesta emergentes:', emergentes);
       if (emergentes && emergentes.length > 0) {
         console.log('Actividades emergentes pendientes:', emergentes.length);
         mostrarNotificacionEmergente(emergentes[0]);
+      } else {
+        console.log('Sin actividades emergentes pendientes');
       }
     })
     .withFailureHandler(function(error) {
